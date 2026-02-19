@@ -91,12 +91,14 @@ def parse_csv(file_content: str) -> GraphData:
       - >10 000 rows
       - Malformed individual rows (logged & skipped)
     """
+    # Strip BOM if present
+    file_content = file_content.lstrip('\ufeff')
     reader = csv.DictReader(io.StringIO(file_content))
 
     # ── Column validation ──
     if reader.fieldnames is None:
         raise ValueError("CSV file is empty or has no header row.")
-    headers = [h.strip().lower() for h in reader.fieldnames]
+    headers = [h.strip().strip('\ufeff').lower() for h in reader.fieldnames]
     missing = set(REQUIRED_COLUMNS) - set(headers)
     if missing:
         raise ValueError(f"Missing required columns: {sorted(missing)}")
