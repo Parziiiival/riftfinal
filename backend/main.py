@@ -11,12 +11,15 @@ No async.  No background jobs.
 
 from __future__ import annotations
 
+import os
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.graph_builder import parse_csv
 from backend.cycle_detector import detect_cycles
@@ -40,12 +43,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Serve frontend static files ───────────────────────────────
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_FRONTEND_DIR = _PROJECT_ROOT / "frontend"
+if _FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
+
 # ── In-memory cache for the latest analysis (strict JSON only) ────
 _last_download_json: Optional[dict] = None
 
 
 @app.get("/")
-def health_check():
+def serve_index():
+    """Serve the frontend index.html."""
+    index_file = _FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file), media_type="text/html")
     return {"status": "ok", "service": "Money Muling Detection Engine"}
 
 
@@ -58,7 +71,16 @@ async def analyze(file: UploadFile = File(...)):
     global _last_download_json
 
     # ── Validate file type ────────────────────────────────────────
-    if file.content_type and "csv" not in file.content_type and "text" not in file.content_type:
+    filename = (file.filename or "").lower()
+    ct = (file.content_type or "").lower()
+    is_csv = (
+        filename.endswith(".csv")
+        or "csv" in ct
+        or "text" in ct
+        or "excel" in ct
+        or "octet-stream" in ct
+    )
+    if not is_csv:
         raise HTTPException(
             status_code=400,
             detail="Invalid file type. Please upload a CSV file.",

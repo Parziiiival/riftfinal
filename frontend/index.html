@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Money Muling Detection Engine — Graph-based financial forensics tool for detecting suspicious transaction patterns.">
+  <title>Money Muling Detection Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- ── Header ──────────────────────────────────────── -->
+    <header class="app-header">
+      <div class="app-header__badge">
+        <span class="dot"></span>
+        Financial Forensics Engine
+      </div>
+      <h1>Money Muling Detection</h1>
+      <p class="app-header__subtitle">
+        Upload transaction data to detect circular fund routing, smurfing patterns, and layered shell networks.
+      </p>
+    </header>
+
+    <!-- ── Upload Zone ─────────────────────────────────── -->
+    <section class="upload-zone">
+      <div class="upload-dropzone" id="dropzone">
+        <div class="upload-icon">📂</div>
+        <p class="upload-label">Drop your CSV file here</p>
+        <p class="upload-hint">or click to browse &bull; Max 13,000 transactions</p>
+        <input type="file" id="fileInput" accept=".csv" hidden>
+        <div class="upload-file-info" id="fileInfo">
+          <span>📄</span>
+          <span id="fileName"></span>
+        </div>
+      </div>
+      <div class="upload-actions">
+        <button class="btn btn-primary" id="analyzeBtn" disabled>
+          🔍 Analyze Transactions
+        </button>
+      </div>
+    </section>
+
+    <!-- ── Error Banner ────────────────────────────────── -->
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- ── Loading Overlay ─────────────────────────────── -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p class="loading-text">Analyzing transaction patterns…</p>
+    </div>
+
+    <!-- ── Dashboard ───────────────────────────────────── -->
+    <main class="dashboard" id="dashboard">
+      <!-- Summary Cards -->
+      <div class="summary-grid">
+        <div class="summary-card summary-card--total">
+          <div class="summary-card__icon">🏦</div>
+          <div class="summary-card__value" id="totalAccounts">0</div>
+          <div class="summary-card__label">Total Accounts</div>
+        </div>
+        <div class="summary-card summary-card--flagged">
+          <div class="summary-card__icon">🚨</div>
+          <div class="summary-card__value" id="flaggedAccounts">0</div>
+          <div class="summary-card__label">Suspicious Flagged</div>
+        </div>
+        <div class="summary-card summary-card--rings">
+          <div class="summary-card__icon">🔗</div>
+          <div class="summary-card__value" id="fraudRings">0</div>
+          <div class="summary-card__label">Fraud Rings</div>
+        </div>
+        <div class="summary-card summary-card--time">
+          <div class="summary-card__icon">⚡</div>
+          <div class="summary-card__value" id="processingTime">0s</div>
+          <div class="summary-card__label">Processing Time</div>
+        </div>
+      </div>
+
+      <!-- Suspicious Accounts -->
+      <section>
+        <h2 class="section-title">
+          <span class="icon">🚨</span>
+          Suspicious Accounts
+        </h2>
+        <div class="table-container">
+          <table class="data-table" id="accountsTable">
+            <thead>
+              <tr>
+                <th data-sort="account_id">Account ID ↕</th>
+                <th data-sort="suspicion_score">Suspicion Score ↕</th>
+                <th>Detected Patterns</th>
+                <th data-sort="ring_id">Ring ID ↕</th>
+              </tr>
+            </thead>
+            <tbody id="accountsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Fraud Rings -->
+      <section>
+        <h2 class="section-title">
+          <span class="icon">🔗</span>
+          Fraud Rings
+        </h2>
+        <div class="table-container">
+          <table class="data-table" id="ringsTable">
+            <thead>
+              <tr>
+                <th data-sort="ring_id">Ring ID ↕</th>
+                <th>Member Accounts</th>
+                <th data-sort="pattern_type">Pattern Type ↕</th>
+                <th data-sort="risk_score">Risk Score ↕</th>
+              </tr>
+            </thead>
+            <tbody id="ringsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Network Graph -->
+      <section class="graph-section">
+        <h2 class="section-title">
+          <span class="icon">🕸️</span>
+          Transaction Network Graph
+        </h2>
+        <div class="graph-wrapper" id="graphWrapper">
+          <canvas class="graph-canvas" id="graphCanvas"></canvas>
+          <div class="graph-controls">
+            <button class="graph-btn" id="zoomIn" title="Zoom In">+</button>
+            <button class="graph-btn" id="zoomOut" title="Zoom Out">−</button>
+            <button class="graph-btn" id="resetView" title="Reset View">⟲</button>
+          </div>
+          <div class="graph-tooltip" id="graphTooltip">
+            <div class="graph-tooltip__title" id="tooltipTitle"></div>
+            <div id="tooltipContent"></div>
+          </div>
+          <div class="graph-legend">
+            <div class="graph-legend__item">
+              <span class="graph-legend__dot" style="background:#2dd4bf"></span>
+              Normal
+            </div>
+            <div class="graph-legend__item">
+              <span class="graph-legend__dot" style="background:#fbbf24"></span>
+              Low Risk
+            </div>
+            <div class="graph-legend__item">
+              <span class="graph-legend__dot" style="background:#f97316"></span>
+              Medium Risk
+            </div>
+            <div class="graph-legend__item">
+              <span class="graph-legend__dot" style="background:#ef4444"></span>
+              High / Critical
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Download -->
+      <section class="download-section">
+        <button class="btn btn-secondary" id="downloadBtn">
+          📥 Download Analysis JSON
+        </button>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      Money Muling Detection Engine &bull; Graph-Based Financial Forensics
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
