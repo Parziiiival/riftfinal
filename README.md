@@ -194,6 +194,51 @@ RIFT26QC/
 
 ---
 
+## 🚀 Deployment
+
+### Option 1: Render (Recommended - Free Tier)
+
+1. **Sign up** at [render.com](https://render.com) (free account)
+2. **Connect your GitHub** repository
+3. **Create a new Web Service**:
+   - Repository: `veera-raghav/RIFT26QC`
+   - Build Command: `pip install -r backend/requirements.txt`
+   - Start Command: `python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+   - Environment: `Python 3`
+4. **Deploy** — Render will automatically deploy your app
+5. Your app will be live at `https://anti-mul.onrender.com` (or your custom domain)
+
+### Option 2: Railway
+
+1. **Sign up** at [railway.app](https://railway.app)
+2. **New Project** → **Deploy from GitHub repo**
+3. Select `veera-raghav/RIFT26QC`
+4. Railway auto-detects Python and deploys
+5. Your app will be live at `https://anti-mul.up.railway.app`
+
+### Option 3: Docker Deployment
+
+```bash
+# Build the image
+docker build -t anti-mul .
+
+# Run the container
+docker run -p 8000:8000 anti-mul
+
+# Or with docker-compose (includes optional Neo4j)
+docker-compose up
+```
+
+### Option 4: Fly.io
+
+```bash
+# Install flyctl: https://fly.io/docs/getting-started/installing-flyctl/
+fly launch
+fly deploy
+```
+
+---
+
 ## ⚠ Known Limitations
 
 - **In-Memory Processing** — Entire graph loaded into memory; for >100K transactions, a database-backed approach is recommended
