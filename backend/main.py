@@ -6,6 +6,7 @@ Endpoints:
   GET  /download-json — Return the latest analysis result as JSON
   GET  /health       — Health check
   GET  /account/{id} — Deep-dive data for a single account
+  GET  /neo4j/graph  — Typed graph from Neo4j (optional)
 
 Serves the frontend from ../frontend/
 """
@@ -45,7 +46,7 @@ if os.path.isdir(FRONTEND_DIR):
 
 # ── Module-level store for the latest analysis result ─────────────
 _last_result: dict | None = None
-_last_graph = None  # Store graph for account deep-dive
+_last_graph = None
 
 
 # ── Health ────────────────────────────────────────────────────────
@@ -54,15 +55,13 @@ def health():
     return {"status": "ok"}
 
 
-# ── Root — serve frontend ─────────────────────────────────────────
 @app.get("/")
 def root():
     """Serve the frontend index.html."""
     index_path = os.path.join(FRONTEND_DIR, "index.html")
     if os.path.isfile(index_path):
         return FileResponse(index_path, media_type="text/html")
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/docs")
+    return {"status": "ok", "service": "Money Muling Detection Engine"}
 
 
 # ── Analyze ───────────────────────────────────────────────────────
@@ -71,14 +70,11 @@ def analyze(file: UploadFile = File(...)):
     """Upload a CSV file and run the full fraud detection pipeline."""
     global _last_result, _last_graph
     try:
-        print(f"DEBUG: Received analysis request for file: {file.filename}")
-
         if not file.filename.endswith(".csv"):
             raise HTTPException(status_code=400, detail="Only CSV files are accepted.")
 
         try:
             raw_bytes = file.file.read()
-            # utf-8-sig strips BOM that Excel/Notepad add to CSV files
             try:
                 raw = raw_bytes.decode("utf-8-sig")
             except UnicodeDecodeError:
@@ -91,7 +87,6 @@ def analyze(file: UploadFile = File(...)):
 
         start = time.time()
 
-        # ── Parse ──
         try:
             graph = parse_csv(raw)
         except ValueError as exc:
@@ -99,24 +94,18 @@ def analyze(file: UploadFile = File(...)):
 
         _last_graph = graph
 
-        # ── Detect patterns ──
         cycle_rings = detect_cycles(graph)
         smurf_rings = detect_smurfing(graph)
         shell_rings = detect_shell_chains(graph)
 
-        # ── Score ──
         result = run_scoring_pipeline(graph, cycle_rings, smurf_rings, shell_rings)
 
-        # ── Layout ──
         layout = compute_layout(
             graph,
             result["suspicious_accounts"],
             result.get("_all_rings", []),
         )
 
-
-
-        # Add timestamp to edges for time-travel playback
         tx_timestamp_map = {}
         for tx in graph.transactions:
             tx_timestamp_map[tx.transaction_id] = tx.timestamp.isoformat()
@@ -124,10 +113,8 @@ def analyze(file: UploadFile = File(...)):
         for edge in layout["edges"]:
             edge["timestamp"] = tx_timestamp_map.get(edge["transaction_id"], "")
 
-        # Strip internal fields
         result.pop("_all_rings", None)
 
-        # Sync to Neo4j for clean graph representation (optional; never fail analysis)
         neo4j_synced = False
         try:
             neo4j_synced = sync_to_neo4j(
@@ -149,20 +136,15 @@ def analyze(file: UploadFile = File(...)):
             "neo4j_synced": neo4j_synced,
         }
 
-        # Store for /download-json
         _last_result = response
 
-        print(f"DEBUG: Analysis complete in {processing_time_seconds}s. Returning results.")
         return JSONResponse(content=response)
+    except HTTPException:
+        raise
     except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
         import traceback
-        print("DEBUG: CRITICAL ERROR IN /analyze:")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
-
-
 
 
 # ── Account Deep-Dive ─────────────────────────────────────────────
@@ -178,7 +160,6 @@ def account_detail(account_id: str):
 
     stats = graph.node_stats.get(account_id)
 
-    # Get all transactions involving this account
     outgoing = []
     for tx in graph.adj_list.get(account_id, []):
         outgoing.append({
@@ -197,20 +178,17 @@ def account_detail(account_id: str):
             "timestamp": tx.timestamp.isoformat(),
         })
 
-    # Find suspicion info
     sus_info = None
     for sa in _last_result.get("suspicious_accounts", []):
         if sa["account_id"] == account_id:
             sus_info = sa
             break
 
-    # Find which rings this account belongs to
     member_rings = []
     for ring in _last_result.get("fraud_rings", []):
         if account_id in ring["member_accounts"]:
             member_rings.append(ring)
 
-    # Build "why flagged" reasons
     reasons = []
     if sus_info:
         patterns = sus_info.get("detected_patterns", [])
@@ -228,7 +206,6 @@ def account_detail(account_id: str):
         if len(member_rings) > 1:
             reasons.append(f"Member of {len(member_rings)} fraud rings simultaneously")
 
-        # Velocity check
         total_tx = len(outgoing) + len(incoming)
         if total_tx > 5:
             reasons.append(f"High transaction velocity: {total_tx} transactions detected")
@@ -251,7 +228,7 @@ def account_detail(account_id: str):
     })
 
 
-# ── Neo4j Graph (typed representation) ────────────────────────────
+# ── Neo4j Graph ────────────────────────────────────────────────────
 @app.get("/neo4j/graph")
 def neo4j_graph():
     """Return the graph from Neo4j with typed Account nodes (if Neo4j is configured)."""
@@ -264,10 +241,10 @@ def neo4j_graph():
     return JSONResponse(content=data)
 
 
-# ── Download JSON ─────────────────────────────────────────────────
+# ── Download JSON ──────────────────────────────────────────────────
 @app.get("/download-json")
 def download_json():
-    """Return the exact required JSON only (no graph_data)."""
+    """Return the latest analysis result as JSON (no graph_data)."""
     if _last_result is None:
         raise HTTPException(status_code=404, detail="No analysis has been run yet.")
 
@@ -282,14 +259,10 @@ def download_json():
 
     return JSONResponse(
         content=download_payload,
-        headers={
-            "Content-Disposition": 'attachment; filename="analysis_result.json"'
-        },
+        headers={"Content-Disposition": 'attachment; filename="analysis_result.json"'},
     )
 
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
-
-
