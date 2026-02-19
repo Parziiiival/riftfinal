@@ -58,8 +58,20 @@ def compute_layout(
         for tx in txs:
             G.add_edge(tx.sender, tx.receiver, weight=tx.amount)
 
-    # Compute layout
-    pos = nx.spring_layout(G, seed=42, k=2.0, iterations=50)
+    # Compute layout - scale down iterations for large graphs
+    n_nodes = G.number_of_nodes()
+    iters = 50
+    k_val = 2.0
+    if n_nodes > 2000:
+        iters = 20
+        k_val = 0.5  # Tighter layout for high density
+    elif n_nodes > 1000:
+        iters = 30
+        k_val = 1.0
+
+    pos = nx.spring_layout(G, seed=42, k=k_val, iterations=iters)
+    print(f"DEBUG: Layout computed with {iters} iterations for {n_nodes} nodes.")
+
 
     # Build lookup for suspicious info
     sus_lookup: Dict[str, dict] = {}

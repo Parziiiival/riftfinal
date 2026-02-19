@@ -123,33 +123,44 @@ def _best_sliding_window(
 ) -> tuple | None:
     """
     Find the 72-hour window with the most distinct counterparties.
+    Uses a two-pointer sliding window ($O(N)$) for efficiency.
     Returns (window_txs, counterparties) or None.
     """
+    if not sorted_txs:
+        return None
+
     window_delta = timedelta(hours=WINDOW_HOURS)
     best_txs = None
     best_counterparties: Set[str] = set()
 
-    for i, anchor in enumerate(sorted_txs):
-        window_end = anchor.timestamp + window_delta
-        current_txs: List[Transaction] = []
-        counterparties: Set[str] = set()
+    n = len(sorted_txs)
+    right = 0
+    # Track counterparties in the current window and their counts
+    current_cp_counts: Dict[str, int] = defaultdict(int)
 
-        for j in range(i, len(sorted_txs)):
-            if sorted_txs[j].timestamp > window_end:
-                break
-            current_txs.append(sorted_txs[j])
-            # counterparty is the *other* end
-            cp = sorted_txs[j].receiver if direction == "fan_out" else sorted_txs[j].sender
-            counterparties.add(cp)
+    for left in range(n):
+        # Expand right boundary
+        while right < n and (sorted_txs[right].timestamp - sorted_txs[left].timestamp) <= window_delta:
+            cp = sorted_txs[right].receiver if direction == "fan_out" else sorted_txs[right].sender
+            current_cp_counts[cp] += 1
+            right += 1
 
-        if len(counterparties) >= MIN_COUNTERPARTIES:
-            if len(counterparties) > len(best_counterparties):
-                best_txs = current_txs
-                best_counterparties = counterparties
+        # Check if current window is the best
+        if len(current_cp_counts) >= MIN_COUNTERPARTIES:
+            if len(current_cp_counts) > len(best_counterparties):
+                best_txs = sorted_txs[left:right]
+                best_counterparties = set(current_cp_counts.keys())
+
+        # Shrink left boundary: remove left-most transaction
+        cp_left = sorted_txs[left].receiver if direction == "fan_out" else sorted_txs[left].sender
+        current_cp_counts[cp_left] -= 1
+        if current_cp_counts[cp_left] == 0:
+            del current_cp_counts[cp_left]
 
     if best_txs is None:
         return None
     return best_txs, best_counterparties
+
 
 
 def _variance_ratio(amounts: List[float]) -> float:

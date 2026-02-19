@@ -153,30 +153,36 @@ def _keep_maximal_chains(chains: List[dict]) -> List[dict]:
     """
     Remove sub-chains: if chain A's members are a contiguous subset
     of chain B's members, discard A.
+    Uses a hash set for $O(C)$ complexity instead of $O(C^2)$.
     """
     if not chains:
         return []
 
-    # Sort by path length descending so we check longest first
+    # Sort by path length descending so we process longest first
     chains.sort(key=lambda c: -c["path_length"])
 
-    # Build a set of all member tuples for quick lookup
-    chain_tuples = [tuple(c["members"]) for c in chains]
-    keep = [True] * len(chains)
+    keep = []
+    covered_subsequences: Set[Tuple[str, ...]] = set()
 
-    for i in range(len(chains)):
-        if not keep[i]:
+    for chain in chains:
+        members = tuple(chain["members"])
+        if members in covered_subsequences:
+            # This chain is already a sub-chain of a previously kept (longer) chain
             continue
-        seq_i = chain_tuples[i]
-        for j in range(i + 1, len(chains)):
-            if not keep[j]:
-                continue
-            seq_j = chain_tuples[j]
-            # Check if seq_j is a contiguous subsequence of seq_i
-            if _is_contiguous_subseq(seq_i, seq_j):
-                keep[j] = False
 
-    return [c for c, k in zip(chains, keep) if k]
+        # Keep this chain
+        keep.append(chain)
+
+        # Add all contiguous subsequences of this chain to the covered set
+        # Chain max length is 5, so n(n+1)/2 = 15 subsequences per chain
+        n = len(members)
+        for length in range(2, n + 1):
+            for start in range(n - length + 1):
+                sub = members[start:start + length]
+                covered_subsequences.add(sub)
+
+    return keep
+
 
 
 def _is_contiguous_subseq(longer: tuple, shorter: tuple) -> bool:

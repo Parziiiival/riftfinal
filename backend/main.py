@@ -69,73 +69,87 @@ def root():
 def analyze(file: UploadFile = File(...)):
     """Upload a CSV file and run the full fraud detection pipeline."""
     global _last_result, _last_graph
-
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are accepted.")
-
     try:
-        raw_bytes = file.file.read()
-        # utf-8-sig strips BOM that Excel/Notepad add to CSV files
+        print(f"DEBUG: Received analysis request for file: {file.filename}")
+
+        if not file.filename.endswith(".csv"):
+            raise HTTPException(status_code=400, detail="Only CSV files are accepted.")
+
         try:
-            raw = raw_bytes.decode("utf-8-sig")
+            raw_bytes = file.file.read()
+            # utf-8-sig strips BOM that Excel/Notepad add to CSV files
+            try:
+                raw = raw_bytes.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                raw = raw_bytes.decode("utf-8")
         except UnicodeDecodeError:
-            raw = raw_bytes.decode("utf-8")
-    except UnicodeDecodeError:
+            try:
+                raw = raw_bytes.decode("latin-1")
+            except Exception:
+                raise HTTPException(status_code=400, detail="File must be UTF-8 encoded.")
+
+        start = time.time()
+
+        # ── Parse ──
         try:
-            raw = raw_bytes.decode("latin-1")
-        except Exception:
-            raise HTTPException(status_code=400, detail="File must be UTF-8 encoded.")
+            graph = parse_csv(raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
 
-    start = time.time()
+        _last_graph = graph
 
-    # ── Parse ──
-    try:
-        graph = parse_csv(raw)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+        # ── Detect patterns ──
+        cycle_rings = detect_cycles(graph)
+        smurf_rings = detect_smurfing(graph)
+        shell_rings = detect_shell_chains(graph)
 
-    _last_graph = graph
+        # ── Score ──
+        result = run_scoring_pipeline(graph, cycle_rings, smurf_rings, shell_rings)
 
-    # ── Detect patterns ──
-    cycle_rings = detect_cycles(graph)
-    smurf_rings = detect_smurfing(graph)
-    shell_rings = detect_shell_chains(graph)
+        # ── Layout ──
+        layout = compute_layout(
+            graph,
+            result["suspicious_accounts"],
+            result.get("_all_rings", []),
+        )
 
-    # ── Score ──
-    result = run_scoring_pipeline(graph, cycle_rings, smurf_rings, shell_rings)
 
-    # ── Layout ──
-    layout = compute_layout(
-        graph,
-        result["suspicious_accounts"],
-        result.get("_all_rings", []),
-    )
 
-    # Add timestamp to edges for time-travel playback
-    tx_timestamp_map = {}
-    for tx in graph.transactions:
-        tx_timestamp_map[tx.transaction_id] = tx.timestamp.isoformat()
+        # Add timestamp to edges for time-travel playback
+        tx_timestamp_map = {}
+        for tx in graph.transactions:
+            tx_timestamp_map[tx.transaction_id] = tx.timestamp.isoformat()
 
-    for edge in layout["edges"]:
-        edge["timestamp"] = tx_timestamp_map.get(edge["transaction_id"], "")
+        for edge in layout["edges"]:
+            edge["timestamp"] = tx_timestamp_map.get(edge["transaction_id"], "")
 
-    # Strip internal fields
-    result.pop("_all_rings", None)
+        # Strip internal fields
+        result.pop("_all_rings", None)
 
-    processing_time_seconds = round(time.time() - start, 4)
+        processing_time_seconds = round(time.time() - start, 4)
 
-    response = {
-        "graph_data": layout,
-        "suspicious_accounts": result["suspicious_accounts"],
-        "fraud_rings": result["fraud_rings"],
-        "summary": result["summary"],
-        "processing_time_seconds": processing_time_seconds,
-    }
+        response = {
+            "graph_data": layout,
+            "suspicious_accounts": result["suspicious_accounts"],
+            "fraud_rings": result["fraud_rings"],
+            "summary": result["summary"],
+            "processing_time_seconds": processing_time_seconds,
+        }
 
-    # Store for /download-json
-    _last_result = response
+        # Store for /download-json
+        _last_result = response
 
-    return JSONResponse(content=response)
+        print(f"DEBUG: Analysis complete in {processing_time_seconds}s. Returning results.")
+        return JSONResponse(content=response)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        import traceback
+        print("DEBUG: CRITICAL ERROR IN /analyze:")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+
 
 
 # ── Account Deep-Dive ─────────────────────────────────────────────
@@ -246,3 +260,10 @@ def download_json():
             "Content-Disposition": 'attachment; filename="analysis_result.json"'
         },
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
+
+

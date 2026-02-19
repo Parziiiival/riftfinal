@@ -26,21 +26,18 @@ MAX_AMOUNT_RATIO = 1.25
 def detect_cycles(graph: GraphData) -> List[dict]:
     """
     Find all directed cycles of length 3–5 satisfying time/amount constraints.
-
-    Returns list of ring dicts:
-        {
-          "pattern_type": "cycle",
-          "members": [node_ids…],
-          "transactions": [Transaction…],
-          "cycle_length": int,
-          "time_span_hours": float,
-          "amount_ratio": float,
-        }
+    Optimized with canonical pruning and degree filtering.
     """
     seen_canonical: Set[tuple] = set()
     results: List[dict] = []
 
-    for start_node in sorted(graph.adj_list.keys()):
+    # Filter for nodes that can actually be part of a cycle
+    candidate_starts = [
+        n for n in graph.adj_list.keys() 
+        if graph.node_stats[n].in_degree > 0 and graph.node_stats[n].out_degree > 0
+    ]
+
+    for start_node in sorted(candidate_starts):
         _dfs(
             graph=graph,
             path=[start_node],
@@ -73,35 +70,44 @@ def _dfs(
     for tx in graph.adj_list.get(current, []):
         neighbour = tx.receiver
 
+        # ── Canonical Pruning ──
+        # If we see a node smaller than start, this cycle is (or will be)
+        # handled when DFS starts from that smaller node.
+        if neighbour < start:
+            continue
+
         # ── Cycle found? ──
         if neighbour == start and depth >= MIN_CYCLE_LEN:
-            candidate_txs = tx_path + [tx]
-            if _validate_cycle(candidate_txs):
-                canon = _canonicalize(path)
+            tx_path.append(tx)
+            if _validate_cycle(tx_path):
+                # Since we start from min node and never visit smaller nodes,
+                # the path itself is already canonical.
+                canon = tuple(path)
                 if canon not in seen_canonical:
                     seen_canonical.add(canon)
-                    time_span = _time_span_hours(candidate_txs)
-                    ratio = _amount_ratio(candidate_txs)
+                    time_span = _time_span_hours(tx_path)
+                    ratio = _amount_ratio(tx_path)
                     results.append({
                         "pattern_type": "cycle",
                         "members": list(path),
-                        "transactions": candidate_txs,
+                        "transactions": list(tx_path),
                         "cycle_length": len(path),
                         "time_span_hours": round(time_span, 2),
                         "amount_ratio": round(ratio, 4),
                     })
+            tx_path.pop()
             continue
 
         # ── Extend path (no revisiting) ──
         if neighbour not in path and depth < MAX_CYCLE_LEN:
+            tx_path.append(tx)
             # Early pruning: check time so far
-            candidate_txs = tx_path + [tx]
-            if _time_span_hours(candidate_txs) <= MAX_TIME_SPAN_HOURS:
+            if _time_span_hours(tx_path) <= MAX_TIME_SPAN_HOURS:
                 path.append(neighbour)
-                tx_path.append(tx)
                 _dfs(graph, path, tx_path, start, seen_canonical, results)
-                tx_path.pop()
                 path.pop()
+            tx_path.pop()
+
 
 
 def _validate_cycle(txs: List[Transaction]) -> bool:

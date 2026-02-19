@@ -1,15 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RIFT — Fraud Detection Intelligence Platform</title>
-  <meta name="description" content="Real-time Interactive Fraud Tracking — Upload transaction data, detect fraud rings, visualize suspicious patterns, and investigate accounts." />
+  <meta name="description"
+    content="Real-time Interactive Fraud Tracking — Upload transaction data, detect fraud rings, visualize suspicious patterns, and investigate accounts." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
   <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
+
 <body>
 
   <!-- ═══════════════ PARTICLE CANVAS ═══════════════ -->
@@ -20,8 +27,13 @@
     <div class="nav-brand">
       <div class="brand-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" stroke-width="2">
-          <defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#06d6a0"/><stop offset="100%" style="stop-color:#00b4d8"/></linearGradient></defs>
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#06d6a0" />
+              <stop offset="100%" style="stop-color:#00b4d8" />
+            </linearGradient>
+          </defs>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       </div>
       <span class="brand-name">RIFT</span>
@@ -30,16 +42,23 @@
     <div class="nav-controls">
       <!-- Back button (Results view only) -->
       <button class="btn-back hidden" id="backToDashboard">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
         Dashboard
       </button>
       <div class="mode-toggle" id="modeToggle">
         <button class="mode-btn active" data-mode="analyst" id="analystBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12H3M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12H3M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5" />
+          </svg>
           Analyst
         </button>
         <button class="mode-btn" data-mode="investigator" id="investigatorBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
           Investigator
         </button>
       </div>
@@ -68,17 +87,21 @@
           <span class="hero-line">Stay Ahead.</span>
         </h1>
         <p class="hero-description animate-on-scroll">
-          RIFT analyzes transaction networks in real-time to uncover hidden fraud rings, 
+          RIFT analyzes transaction networks in real-time to uncover hidden fraud rings,
           smurfing patterns, and shell chains with precision scoring and interactive graph exploration.
         </p>
         <div class="hero-actions animate-on-scroll">
           <a href="#uploadArea" class="btn-hero-primary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10" />
+            </svg>
             Start Analysis
           </a>
           <a href="#featuresSection" class="btn-hero-secondary">
             Learn More
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </a>
         </div>
         <div class="hero-stats animate-on-scroll">
@@ -113,46 +136,65 @@
         <span class="label-line"></span>
       </div>
       <h2 class="section-title animate-on-scroll">Powerful Detection Engines</h2>
-      <p class="section-subtitle animate-on-scroll">Four specialized algorithms working in concert to identify even the most sophisticated fraud patterns.</p>
+      <p class="section-subtitle animate-on-scroll">Four specialized algorithms working in concert to identify even the
+        most sophisticated fraud patterns.</p>
 
       <div class="features-grid">
         <div class="feature-card animate-on-scroll" data-delay="0">
           <div class="feature-card-glow"></div>
           <div class="feature-icon red-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
           </div>
           <h3>Cycle Detection</h3>
-          <p>Bounded DFS algorithm (depth 3–5) with 72-hour time constraints and ≤1.25 amount ratio. Canonical deduplication prevents double-counting.</p>
+          <p>Bounded DFS algorithm (depth 3–5) with 72-hour time constraints and ≤1.25 amount ratio. Canonical
+            deduplication prevents double-counting.</p>
           <div class="feature-tag">Graph Analysis</div>
         </div>
 
         <div class="feature-card animate-on-scroll" data-delay="100">
           <div class="feature-card-glow"></div>
           <div class="feature-icon orange-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
           </div>
           <h3>Smurfing Detection</h3>
-          <p>Fan-out pattern analysis identifying accounts distributing funds to ≥5 recipients with similar amounts within short time windows.</p>
+          <p>Fan-out pattern analysis identifying accounts distributing funds to ≥5 recipients with similar amounts
+            within short time windows.</p>
           <div class="feature-tag">Structuring</div>
         </div>
 
         <div class="feature-card animate-on-scroll" data-delay="200">
           <div class="feature-card-glow"></div>
           <div class="feature-icon purple-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 12h18M12 3v18" />
+            </svg>
           </div>
           <h3>Shell Chain Detection</h3>
-          <p>Identifies layered pass-through chains where funds flow through intermediate "shell" accounts with minimal retention.</p>
+          <p>Identifies layered pass-through chains where funds flow through intermediate "shell" accounts with minimal
+            retention.</p>
           <div class="feature-tag">Layering</div>
         </div>
 
         <div class="feature-card animate-on-scroll" data-delay="300">
           <div class="feature-card-glow"></div>
           <div class="feature-icon green-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
           </div>
           <h3>Scoring Engine</h3>
-          <p>Multi-factor scoring with base pattern weights, interaction bonuses, structural confidence, density adjustment, and normalization.</p>
+          <p>Multi-factor scoring with base pattern weights, interaction bonuses, structural confidence, density
+            adjustment, and normalization.</p>
           <div class="feature-tag">Risk Score</div>
         </div>
       </div>
@@ -173,7 +215,11 @@
           <div class="step-number">01</div>
           <div class="step-connector"></div>
           <div class="step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
           </div>
           <h4>Upload CSV</h4>
           <p>Drag & drop your transaction data</p>
@@ -182,7 +228,14 @@
           <div class="step-number">02</div>
           <div class="step-connector"></div>
           <div class="step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="6" cy="6" r="3" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="6" r="3" />
+              <circle cx="18" cy="18" r="3" />
+              <line x1="9" y1="6" x2="15" y2="6" />
+              <line x1="6" y1="9" x2="6" y2="15" />
+            </svg>
           </div>
           <h4>Build Graph</h4>
           <p>Directed transaction network constructed</p>
@@ -191,7 +244,10 @@
           <div class="step-number">03</div>
           <div class="step-connector"></div>
           <div class="step-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
           </div>
           <h4>Detect Patterns</h4>
           <p>Cycles, smurfing & shell chains found</p>
@@ -199,7 +255,10 @@
         <div class="pipeline-step-card animate-on-scroll" data-delay="450">
           <div class="step-number">04</div>
           <div class="step-icon final-step">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
           </div>
           <h4>Get Results</h4>
           <p>Interactive dashboard with risk scores</p>
@@ -215,21 +274,28 @@
         <span class="label-line"></span>
       </div>
       <h2 class="section-title animate-on-scroll">Start Your Analysis</h2>
-      <p class="section-subtitle animate-on-scroll">Upload a transaction CSV file to run the full fraud detection pipeline.</p>
+      <p class="section-subtitle animate-on-scroll">Upload a transaction CSV file to run the full fraud detection
+        pipeline.</p>
 
       <div class="upload-container">
         <div id="dropZone" class="drop-zone animate-on-scroll">
           <div class="drop-zone-border"></div>
           <div class="drop-icon">
             <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <polyline points="9 15 12 12 15 15" />
             </svg>
           </div>
           <h3>Drop Transaction CSV Here</h3>
           <p>or <label for="fileInput" class="file-label">browse files</label></p>
           <input type="file" id="fileInput" accept=".csv" hidden />
           <div class="drop-hint">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4M12 8h.01" />
+            </svg>
             Required: transaction_id, sender_id, receiver_id, amount, timestamp
           </div>
         </div>
@@ -240,8 +306,10 @@
             <h3>Schema Validation</h3>
             <div id="healthScore" class="health-score">
               <svg width="50" height="50" viewBox="0 0 36 36">
-                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#1e293b" stroke-width="3"/>
-                <path id="healthRing" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#06d6a0" stroke-width="3" stroke-dasharray="0, 100" stroke-linecap="round"/>
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+                  stroke="#1e293b" stroke-width="3" />
+                <path id="healthRing" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none" stroke="#06d6a0" stroke-width="3" stroke-dasharray="0, 100" stroke-linecap="round" />
               </svg>
               <span id="healthValue">0</span>
             </div>
@@ -257,12 +325,16 @@
           </div>
           <div class="table-wrapper">
             <table id="previewTable">
-              <thead><tr id="previewHead"></tr></thead>
+              <thead>
+                <tr id="previewHead"></tr>
+              </thead>
               <tbody id="previewBody"></tbody>
             </table>
           </div>
           <button id="analyzeBtn" class="btn-primary btn-glow">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10" />
+            </svg>
             Analyze Transactions
           </button>
         </div>
@@ -304,7 +376,12 @@
       <div class="dashboard-grid">
         <div class="stat-card" id="statTotalAccounts">
           <div class="stat-icon blue">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
           </div>
           <div class="stat-info">
             <span class="stat-value" data-target="0">0</span>
@@ -313,7 +390,11 @@
         </div>
         <div class="stat-card" id="statSuspicious">
           <div class="stat-icon red">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
           </div>
           <div class="stat-info">
             <span class="stat-value" data-target="0">0</span>
@@ -322,7 +403,11 @@
         </div>
         <div class="stat-card" id="statRings">
           <div class="stat-icon orange">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
           </div>
           <div class="stat-info">
             <span class="stat-value" data-target="0">0</span>
@@ -331,7 +416,10 @@
         </div>
         <div class="stat-card" id="statProcessing">
           <div class="stat-icon green">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
           </div>
           <div class="stat-info">
             <span class="stat-value" data-target="0">0</span><span class="stat-unit">s</span>
@@ -344,29 +432,89 @@
       <div class="insights-panel" id="insightsPanel">
         <div class="insights-header">
           <h3>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
             AI Insights
           </h3>
         </div>
         <div id="insightsList" class="insights-list"></div>
       </div>
 
+      <!-- ═══ RESULTS TOOLBAR ═══ -->
+      <div class="results-toolbar">
+        <div class="results-toolbar-left">
+          <span class="toolbar-info" id="analysisTimestamp"></span>
+        </div>
+        <div class="results-toolbar-right">
+          <button class="btn-export" id="exportReportBtn" title="Export PDF Report">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Export PDF
+          </button>
+          <button class="btn-compare" id="compareToggleBtn" title="Compare Accounts">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+            Compare
+          </button>
+        </div>
+      </div>
+
       <!-- ═══ TAB BAR FOR MAIN PANELS ═══ -->
       <div class="tab-bar" id="tabBar">
         <button class="tab-btn active" data-tab="graph">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="18" y1="9" x2="18" y2="15"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="18" r="3" />
+            <circle cx="18" cy="6" r="3" />
+            <line x1="6" y1="9" x2="6" y2="15" />
+            <line x1="9" y1="6" x2="15" y2="6" />
+            <line x1="9" y1="18" x2="15" y2="18" />
+            <line x1="18" y1="9" x2="18" y2="15" />
+          </svg>
           Graph
         </button>
+        <button class="tab-btn" data-tab="heatmap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+          </svg>
+          Heatmap
+        </button>
         <button class="tab-btn" data-tab="rings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="3" y1="15" x2="21" y2="15" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
           Fraud Rings
         </button>
         <button class="tab-btn" data-tab="json">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+          </svg>
           JSON Output
         </button>
         <button class="tab-btn" data-tab="architecture">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
           Architecture
         </button>
       </div>
@@ -404,10 +552,15 @@
             </div>
             <div class="toolbar-group">
               <button class="toolbar-btn" id="fitGraphBtn" title="Fit to view">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                </svg>
               </button>
               <button class="toolbar-btn" id="resetGraphBtn" title="Reset view">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="1 4 1 10 7 10" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
               </button>
             </div>
           </div>
@@ -416,15 +569,23 @@
           <div class="time-travel" id="timeTravelPanel">
             <div class="time-header">
               <h4>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
                 Time Travel
               </h4>
               <div class="time-controls">
                 <button class="toolbar-btn" id="playBtn" title="Play">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21" />
+                  </svg>
                 </button>
                 <button class="toolbar-btn" id="resetTimeBtn" title="Reset">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="1 4 1 10 7 10" />
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -458,6 +619,28 @@
             <p class="hint-text">Click a node in the graph to view account details.</p>
           </div>
         </div>
+      </div>
+
+      <!-- ═══ RISK HEATMAP ═══ -->
+      <div class="tab-panel" id="heatmapPanel">
+        <div class="heatmap-header">
+          <h3>Risk Heatmap</h3>
+          <div class="heatmap-controls">
+            <label class="toolbar-label">Sort by</label>
+            <select id="heatmapSort" class="toolbar-select">
+              <option value="score">Risk Score</option>
+              <option value="connections">Connections</option>
+              <option value="volume">Transaction Volume</option>
+            </select>
+          </div>
+        </div>
+        <div class="heatmap-legend">
+          <span class="heatmap-legend-label">Low Risk</span>
+          <div class="heatmap-gradient"></div>
+          <span class="heatmap-legend-label">High Risk</span>
+        </div>
+        <div id="heatmapGrid" class="heatmap-grid"></div>
+        <div id="heatmapTooltip" class="heatmap-tooltip hidden"></div>
       </div>
 
       <!-- ═══ FRAUD RINGS TABLE ═══ -->
@@ -494,11 +677,18 @@
               <span class="toggle-label">Human-Readable</span>
             </label>
             <button class="btn-secondary" id="copyJsonBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
               Copy
             </button>
             <button class="btn-primary" id="downloadJsonBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
               Download
             </button>
           </div>
@@ -513,50 +703,102 @@
           <div class="arch-grid">
             <div class="arch-card">
               <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
               </div>
               <h4>CSV Ingestion</h4>
-              <p>Strict schema validation with column checks, UTF-8 encoding enforcement, timezone normalization, and a 10K transaction limit.</p>
+              <p>Strict schema validation with column checks, UTF-8 encoding enforcement, timezone normalization, and a
+                10K transaction limit.</p>
             </div>
             <div class="arch-card">
               <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2">
+                  <circle cx="6" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="18" cy="18" r="3" />
+                  <line x1="9" y1="6" x2="15" y2="6" />
+                  <line x1="6" y1="9" x2="6" y2="15" />
+                  <line x1="18" y1="9" x2="18" y2="15" />
+                  <line x1="9" y1="18" x2="15" y2="18" />
+                </svg>
               </div>
               <h4>Graph Construction</h4>
-              <p>Directed graph built with adjacency + reverse-adjacency lists. Tracks per-node statistics: in/out degree, amounts, timestamps.</p>
+              <p>Directed graph built with adjacency + reverse-adjacency lists. Tracks per-node statistics: in/out
+                degree, amounts, timestamps.</p>
             </div>
             <div class="arch-card">
               <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef476f" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef476f" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
               </div>
               <h4>Cycle Detection</h4>
-              <p>Custom bounded DFS (depth 3–5) with 72-hour time constraint and ≤1.25 amount ratio. Canonical deduplication.</p>
+              <p>Custom bounded DFS (depth 3–5) with 72-hour time constraint and ≤1.25 amount ratio. Canonical
+                deduplication.</p>
             </div>
             <div class="arch-card">
               <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffd166" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffd166" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
               </div>
               <h4>Smurfing Detection</h4>
-              <p>Fan-out pattern analysis: distributing funds to ≥5 recipients with similar amounts in short time windows.</p>
+              <p>Fan-out pattern analysis: distributing funds to ≥5 recipients with similar amounts in short time
+                windows.</p>
             </div>
             <div class="arch-card">
               <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#bb86fc" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 4l8 8m0 0l8-8m-8 8v8"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#bb86fc" stroke-width="2">
+                  <path d="M4 4h16v16H4z" />
+                  <path d="M4 4l8 8m0 0l8-8m-8 8v8" />
+                </svg>
               </div>
               <h4>Shell Chain Detection</h4>
               <p>Identifies layered pass-through chains with minimal retention, typical of laundering schemes.</p>
             </div>
             <div class="arch-card">
               <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
               </div>
               <h4>Scoring Engine</h4>
-              <p>Multi-factor scoring: base pattern weights + interaction bonuses + structural confidence + density adjustment.</p>
+              <p>Multi-factor scoring: base pattern weights + interaction bonuses + structural confidence + density
+                adjustment.</p>
             </div>
           </div>
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- ═══════════════ COMPARISON PANEL ═══════════════ -->
+  <div id="comparisonPanel" class="comparison-panel hidden">
+    <div class="comparison-header">
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        Risk Comparison
+      </h3>
+      <button class="close-btn" id="closeComparisonPanel">✕</button>
+    </div>
+    <div class="comparison-instructions">
+      <p>Click accounts in the graph or search to add them for comparison (max 5).</p>
+    </div>
+    <div id="comparisonAccounts" class="comparison-accounts"></div>
+    <canvas id="comparisonChart" class="comparison-chart" height="250"></canvas>
+    <div id="comparisonDetails" class="comparison-details"></div>
   </div>
 
   <!-- ═══════════════ FALSE POSITIVE MODAL ═══════════════ -->
@@ -572,6 +814,32 @@
     </div>
   </div>
 
+  <!-- ═══════════════ COMMAND PALETTE ═══════════════ -->
+  <div id="commandPalette" class="command-palette hidden">
+    <div class="command-backdrop"></div>
+    <div class="command-dialog">
+      <div class="command-search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+        <input type="text" id="commandInput" placeholder="Search accounts, rings, or type a command…"
+          autocomplete="off" />
+        <kbd class="command-kbd">ESC</kbd>
+      </div>
+      <div id="commandResults" class="command-results"></div>
+      <div class="command-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> to navigate</span>
+        <span><kbd>Enter</kbd> to select</span>
+        <span><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TOAST CONTAINER ═══════════════ -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <script src="/static/app.js"></script>
 </body>
+
 </html>

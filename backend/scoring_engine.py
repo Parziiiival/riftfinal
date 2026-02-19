@@ -156,14 +156,17 @@ def run_scoring_pipeline(
     sorted_scores = sorted(raw_scores.values())
     n = len(sorted_scores)
 
+    import bisect
     final_scores: Dict[str, float] = {}
     for account in suspicious_set:
         score = raw_scores[account]
-        # Percentile = fraction of accounts with score ≤ this score
-        rank = sum(1 for s in sorted_scores if s <= score)
+        # Percentile = fraction of accounts with score <= this score
+        # Use bisect_right for O(log M) instead of linear scan
+        rank = bisect.bisect_right(sorted_scores, score)
         percentile = rank / n if n > 0 else 0.5
         multiplier = max(0.85, min(1.15, 0.85 + 0.3 * percentile))
         final_scores[account] = min(100.0, round(score * multiplier, 1))
+
 
     # ── 7. Build output ───────────────────────────────────────────
     # Suspicious accounts — sorted descending by score, then by id for determinism
@@ -218,26 +221,31 @@ def run_scoring_pipeline(
 def _velocity_check(graph: GraphData) -> Set[str]:
     """Accounts with >5 transactions in any 24-hour window."""
     velocity_accounts: Set[str] = set()
-    window = timedelta(hours=24)
+    window_delta = timedelta(hours=24)
 
     for node in graph.all_nodes:
-        txs: List[Transaction] = []
-        txs.extend(graph.adj_list.get(node, []))
-        txs.extend(
-            tx for tx in graph.reverse_adj_list.get(node, [])
-        )
+        # Combine incoming and outgoing transactions
+        txs = graph.adj_list.get(node, []) + graph.reverse_adj_list.get(node, [])
         if len(txs) <= 5:
             continue
 
         timestamps = sorted(tx.timestamp for tx in txs)
-        for i, ts in enumerate(timestamps):
-            end = ts + window
-            count = sum(1 for t in timestamps[i:] if t <= end)
-            if count > 5:
+        n_tx = len(timestamps)
+        
+        # Two-pointer sliding window
+        right = 0
+        for left in range(n_tx):
+            # Expand right pointer as long as it's within 24h of the left pointer
+            while right < n_tx and (timestamps[right] - timestamps[left]) <= window_delta:
+                right += 1
+            
+            # If the current window [left, right) has > 5 transactions, flag and move to next node
+            if (right - left) > 5:
                 velocity_accounts.add(node)
                 break
 
     return velocity_accounts
+
 
 
 def _empty_result(graph: GraphData) -> dict:

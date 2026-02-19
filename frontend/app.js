@@ -12,6 +12,8 @@ const State = {
     currentMode: 'analyst',
     playInterval: null,
     currentView: 'dashboard',
+    comparisonAccounts: [],
+    comparisonMode: false,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -301,27 +303,44 @@ function showPreview(lines, headers, rowCount, accountCount, fileName, fileSize)
 // ═══════════════════════════════════════════════════════════════
 
 async function runAnalysis() {
-    if (!State.uploadedFile) return;
+    if (!State.uploadedFile) {
+        console.warn('No file uploaded yet');
+        return;
+    }
+
+    console.log('Starting analysis for file:', {
+        name: State.uploadedFile.name,
+        size: State.uploadedFile.size,
+        type: State.uploadedFile.type
+    });
 
     showLoading(true);
     const formData = new FormData();
     formData.append('file', State.uploadedFile);
 
+    const fetchUrl = '/analyze';
+    console.log('Fetching:', fetchUrl);
+
     try {
-        const res = await fetch('/analyze', { method: 'POST', body: formData });
+        const res = await fetch(fetchUrl, { method: 'POST', body: formData });
+        console.log('Fetch response status:', res.status, res.statusText);
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || 'Analysis failed');
         }
         const data = await res.json();
+        console.log('Analysis data received successfully');
         State.data = data;
         State.legitimateAccounts.clear();
         onAnalysisComplete(data);
     } catch (err) {
         showLoading(false);
-        alert('Error: ' + err.message);
+        console.error('CRITICAL: Fetch failed or error in processing:', err);
+        alert('Analysis Error: ' + err.message + '\n\nPlease check the browser console (F12) and the terminal for more details.');
     }
+
 }
+
 
 function showLoading(show) {
     const overlay = $('#loadingOverlay');
@@ -386,6 +405,16 @@ function onAnalysisComplete(data) {
 
     // Setup time-travel
     setupTimeTravel(data);
+
+    // Build risk heatmap
+    buildRiskHeatmap(data);
+
+    // Trigger alert notifications
+    triggerAnalysisAlerts(data);
+
+    // Set analysis timestamp
+    const tsEl = $('#analysisTimestamp');
+    if (tsEl) tsEl.textContent = `Analyzed at ${new Date().toLocaleString()}`;
 }
 
 function animateCounter(selector, target, isFloat = false) {
@@ -637,7 +666,11 @@ function buildGraph(data) {
     // ── Events ──
     State.cy.on('tap', 'node', (evt) => {
         const nodeId = evt.target.data('id');
-        openAccountPanel(nodeId);
+        if (State.comparisonMode) {
+            addToComparison(nodeId);
+        } else {
+            openAccountPanel(nodeId);
+        }
     });
 
     State.cy.on('mouseover', 'node', (evt) => {
@@ -1351,6 +1384,684 @@ function initAccountPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  SECTION 14: ALERT NOTIFICATION SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+function showAlert(type, title, message) {
+    const container = $('#toastContainer');
+    if (!container) return;
+
+    const icons = {
+        critical: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+        info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+        success: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-body">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+        <div class="toast-progress"><div class="toast-progress-bar"></div></div>
+    `;
+
+    container.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => toast.classList.add('toast-enter'));
+
+    // Auto-dismiss after 6 seconds
+    setTimeout(() => {
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 400);
+    }, 6000);
+}
+
+function triggerAnalysisAlerts(data) {
+    const rings = data.fraud_rings.length;
+    const suspicious = data.summary.suspicious_accounts_flagged;
+    const total = data.summary.total_accounts_analyzed;
+
+    // Stagger the alerts
+    setTimeout(() => {
+        showAlert('success', 'Analysis Complete', `Processed ${total} accounts in ${data.processing_time_seconds}s`);
+    }, 500);
+
+    if (rings > 0) {
+        setTimeout(() => {
+            showAlert('critical', `${rings} Fraud Ring${rings > 1 ? 's' : ''} Detected`,
+                `${suspicious} suspicious account${suspicious > 1 ? 's' : ''} flagged across ${rings} ring${rings > 1 ? 's' : ''}`);
+        }, 1500);
+    }
+
+    // High risk accounts alert
+    const highRisk = data.suspicious_accounts.filter(a => a.suspicion_score >= 70);
+    if (highRisk.length > 0) {
+        setTimeout(() => {
+            showAlert('warning', 'High Risk Accounts',
+                `${highRisk.length} account${highRisk.length > 1 ? 's' : ''} scored above 70 — immediate review recommended`);
+        }, 2500);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTION 15: COMMAND PALETTE (Ctrl+K)
+// ═══════════════════════════════════════════════════════════════
+
+let commandSelectedIndex = -1;
+
+function initCommandPalette() {
+    const palette = $('#commandPalette');
+    const input = $('#commandInput');
+    const results = $('#commandResults');
+    const backdrop = palette.querySelector('.command-backdrop');
+
+    // Ctrl+K or Cmd+K to open
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            toggleCommandPalette();
+        }
+        if (e.key === 'Escape' && !palette.classList.contains('hidden')) {
+            closeCommandPalette();
+        }
+    });
+
+    backdrop.addEventListener('click', closeCommandPalette);
+
+    input.addEventListener('input', () => {
+        const query = input.value.trim().toLowerCase();
+        commandSelectedIndex = -1;
+        if (query.length === 0) {
+            showDefaultCommands();
+            return;
+        }
+        searchCommands(query);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const items = results.querySelectorAll('.command-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            commandSelectedIndex = Math.min(commandSelectedIndex + 1, items.length - 1);
+            updateCommandSelection(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            commandSelectedIndex = Math.max(commandSelectedIndex - 1, 0);
+            updateCommandSelection(items);
+        } else if (e.key === 'Enter' && commandSelectedIndex >= 0 && items[commandSelectedIndex]) {
+            e.preventDefault();
+            items[commandSelectedIndex].click();
+        }
+    });
+}
+
+function toggleCommandPalette() {
+    const palette = $('#commandPalette');
+    if (palette.classList.contains('hidden')) {
+        palette.classList.remove('hidden');
+        $('#commandInput').value = '';
+        $('#commandInput').focus();
+        commandSelectedIndex = -1;
+        showDefaultCommands();
+    } else {
+        closeCommandPalette();
+    }
+}
+
+function closeCommandPalette() {
+    $('#commandPalette').classList.add('hidden');
+}
+
+function showDefaultCommands() {
+    const results = $('#commandResults');
+    let html = '<div class="command-section-title">Quick Actions</div>';
+    const actions = [
+        { icon: '📊', label: 'Switch to Graph View', action: 'nav', id: 'graph' },
+        { icon: '🔥', label: 'Switch to Heatmap View', action: 'nav', id: 'heatmap' },
+        { icon: '🔗', label: 'Switch to Fraud Rings', action: 'nav', id: 'rings' },
+        { icon: '📄', label: 'Export PDF Report', action: 'export', id: 'pdf' },
+        { icon: '🔍', label: 'Toggle Investigator Mode', action: 'mode', id: 'toggle' },
+    ];
+
+    actions.forEach((a, i) => {
+        html += `<div class="command-item" data-index="${i}" data-action="${a.action}" data-id="${a.id}">
+            <span class="command-item-icon">${a.icon}</span>
+            <span class="command-item-label">${a.label}</span>
+            <span class="command-item-type">Action</span>
+        </div>`;
+    });
+
+    results.innerHTML = html;
+    attachCommandItemEvents();
+}
+
+function encodeAction(action) {
+    return 'function(){}'; // No longer used
+}
+
+function searchCommands(query) {
+    const results = $('#commandResults');
+    let html = '';
+    let idx = 0;
+
+    // Search accounts
+    if (State.data) {
+        const accounts = State.data.graph_data.nodes.filter(n =>
+            n.id.toLowerCase().includes(query)
+        ).slice(0, 5);
+
+        if (accounts.length > 0) {
+            html += '<div class="command-section-title">Accounts</div>';
+            accounts.forEach(acc => {
+                const sus = State.data.suspicious_accounts.find(a => a.account_id === acc.id);
+                const score = sus ? sus.suspicion_score : 0;
+                const riskClass = score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low';
+                html += `<div class="command-item" data-index="${idx}" data-action="account" data-id="${acc.id}">
+                    <span class="command-item-icon">👤</span>
+                    <span class="command-item-label">${acc.id}</span>
+                    <span class="risk-badge ${riskClass}">${score}</span>
+                </div>`;
+                idx++;
+            });
+        }
+
+        // Search fraud rings
+        const rings = State.data.fraud_rings.filter(r =>
+            r.ring_id.toLowerCase().includes(query) || r.pattern_type.toLowerCase().includes(query)
+        ).slice(0, 3);
+
+        if (rings.length > 0) {
+            html += '<div class="command-section-title">Fraud Rings</div>';
+            rings.forEach(ring => {
+                html += `<div class="command-item" data-index="${idx}" data-action="ring" data-id="${ring.ring_id}">
+                    <span class="command-item-icon">🔗</span>
+                    <span class="command-item-label">${ring.ring_id} — ${ring.pattern_type}</span>
+                    <span class="command-item-type">${ring.member_accounts.length} members</span>
+                </div>`;
+                idx++;
+            });
+        }
+    }
+
+    // Navigation commands
+    const navItems = [
+        { icon: '📊', label: 'Go to Graph', action: 'nav', id: 'graph' },
+        { icon: '🔥', label: 'Go to Heatmap', action: 'nav', id: 'heatmap' },
+        { icon: '🔗', label: 'Go to Fraud Rings', action: 'nav', id: 'rings' },
+        { icon: '💾', label: 'Go to JSON Output', action: 'nav', id: 'json' },
+        { icon: '📄', label: 'Export PDF Report', action: 'export', id: 'pdf' },
+        { icon: '🏠', label: 'Back to Dashboard', action: 'nav', id: 'dashboard' },
+    ].filter(item => item.label.toLowerCase().includes(query));
+
+    if (navItems.length > 0) {
+        html += '<div class="command-section-title">Navigation</div>';
+        navItems.forEach(item => {
+            html += `<div class="command-item" data-index="${idx}" data-action="${item.action}" data-id="${item.id}">
+                <span class="command-item-icon">${item.icon}</span>
+                <span class="command-item-label">${item.label}</span>
+                <span class="command-item-type">Navigation</span>
+            </div>`;
+            idx++;
+        });
+    }
+
+    if (!html) {
+        html = '<div class="command-empty">No results found</div>';
+    }
+
+    results.innerHTML = html;
+    attachCommandItemEvents();
+}
+
+function attachCommandItemEvents() {
+    $$('.command-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const action = item.dataset.action;
+            const id = item.dataset.id;
+
+            if (action === 'account') {
+                openAccountPanel(id);
+                focusOnNode(id);
+            } else if (action === 'ring') {
+                highlightRingAndSwitch(id);
+            } else if (action === 'nav') {
+                if (id === 'dashboard') showDashboardPage();
+                else switchTab(id);
+            } else if (action === 'export') {
+                generateReport();
+            } else if (action === 'mode') {
+                setMode(State.currentMode === 'analyst' ? 'investigator' : 'analyst');
+                showAlert('info', 'Mode Switched', `Now in ${State.currentMode} mode`);
+            }
+
+            closeCommandPalette();
+        });
+    });
+}
+
+function updateCommandSelection(items) {
+    items.forEach((item, i) => {
+        item.classList.toggle('selected', i === commandSelectedIndex);
+    });
+    if (items[commandSelectedIndex]) {
+        items[commandSelectedIndex].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTION 16: PDF REPORT GENERATOR
+// ═══════════════════════════════════════════════════════════════
+
+async function generateReport() {
+    if (!State.data) {
+        showAlert('warning', 'No Data', 'Please run an analysis first before exporting.');
+        return;
+    }
+
+    const btn = $('#exportReportBtn');
+    const origText = btn.innerHTML;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generating…`;
+    btn.disabled = true;
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const d = State.data;
+        let y = 20;
+        const margin = 20;
+        const pageWidth = 170;
+
+        // Header
+        doc.setFillColor(10, 14, 23);
+        doc.rect(0, 0, 210, 45, 'F');
+        doc.setTextColor(6, 214, 160);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('RIFT', margin, 22);
+        doc.setFontSize(10);
+        doc.setTextColor(180, 190, 200);
+        doc.text('Fraud Detection Intelligence Report', margin, 30);
+        doc.setFontSize(8);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, margin, 37);
+
+        y = 55;
+
+        // Summary Box
+        doc.setFillColor(26, 31, 46);
+        doc.roundedRect(margin, y, pageWidth, 30, 3, 3, 'F');
+        doc.setTextColor(226, 232, 240);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Analysis Summary', margin + 5, y + 8);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(160, 170, 180);
+        const summaryData = [
+            `Total Accounts: ${d.summary.total_accounts_analyzed}`,
+            `Suspicious: ${d.summary.suspicious_accounts_flagged}`,
+            `Fraud Rings: ${d.summary.fraud_rings_detected}`,
+            `Processing: ${d.processing_time_seconds}s`,
+        ];
+        doc.text(summaryData.join('   |   '), margin + 5, y + 18);
+        y += 40;
+
+        // Suspicious Accounts
+        doc.setTextColor(239, 71, 111);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Suspicious Accounts', margin, y);
+        y += 8;
+
+        d.suspicious_accounts.slice(0, 15).forEach(acc => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            const riskLevel = acc.suspicion_score >= 70 ? 'HIGH' : acc.suspicion_score >= 40 ? 'MEDIUM' : 'LOW';
+            doc.setFillColor(26, 31, 46);
+            doc.roundedRect(margin, y, pageWidth, 14, 2, 2, 'F');
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(226, 232, 240);
+            doc.text(acc.account_id, margin + 5, y + 6);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(160, 170, 180);
+            doc.text(`Score: ${acc.suspicion_score}  |  Risk: ${riskLevel}  |  Patterns: ${acc.detected_patterns.join(', ')}`, margin + 5, y + 11);
+            y += 17;
+        });
+
+        y += 5;
+
+        // Fraud Rings
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setTextColor(255, 209, 102);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Fraud Rings', margin, y);
+        y += 8;
+
+        d.fraud_rings.forEach(ring => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.setFillColor(26, 31, 46);
+            doc.roundedRect(margin, y, pageWidth, 14, 2, 2, 'F');
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(226, 232, 240);
+            doc.text(`${ring.ring_id} — ${ring.pattern_type}`, margin + 5, y + 6);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(160, 170, 180);
+            doc.text(`Risk Score: ${ring.risk_score}  |  Members: ${ring.member_accounts.join(', ')}`, margin + 5, y + 11);
+            y += 17;
+        });
+
+        // Footer
+        const pages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pages; i++) {
+            doc.setPage(i);
+            doc.setFillColor(10, 14, 23);
+            doc.rect(0, 287, 210, 10, 'F');
+            doc.setFontSize(7);
+            doc.setTextColor(100, 110, 120);
+            doc.text('RIFT — Fraud Detection Intelligence Platform', margin, 293);
+            doc.text(`Page ${i} of ${pages}`, 180, 293);
+        }
+
+        doc.save(`RIFT_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+        showAlert('success', 'Report Exported', 'PDF report has been downloaded successfully.');
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        showAlert('critical', 'Export Failed', 'Could not generate PDF. Please try again.');
+    } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTION 17: RISK HEATMAP
+// ═══════════════════════════════════════════════════════════════
+
+function buildRiskHeatmap(data) {
+    const grid = $('#heatmapGrid');
+    if (!grid) return;
+
+    const sortBy = $('#heatmapSort')?.value || 'score';
+
+    // Build account data
+    let accounts = data.graph_data.nodes.map(node => {
+        const sus = data.suspicious_accounts.find(a => a.account_id === node.id);
+        return {
+            id: node.id,
+            score: sus ? sus.suspicion_score : 0,
+            isSuspicious: !!sus,
+            connections: (node.in_degree || 0) + (node.out_degree || 0),
+            patterns: sus ? sus.detected_patterns : [],
+            volume: data.graph_data.edges.filter(e => e.source === node.id || e.target === node.id)
+                .reduce((sum, e) => sum + e.amount, 0),
+        };
+    });
+
+    // Sort
+    if (sortBy === 'score') accounts.sort((a, b) => b.score - a.score);
+    else if (sortBy === 'connections') accounts.sort((a, b) => b.connections - a.connections);
+    else if (sortBy === 'volume') accounts.sort((a, b) => b.volume - a.volume);
+
+    grid.innerHTML = accounts.map(acc => {
+        const intensity = acc.score / 100;
+        const r = Math.round(6 + (239 - 6) * intensity);
+        const g = Math.round(214 + (71 - 214) * intensity);
+        const b = Math.round(160 + (111 - 160) * intensity);
+        const bg = `rgba(${r}, ${g}, ${b}, ${0.15 + intensity * 0.55})`;
+        const border = `rgba(${r}, ${g}, ${b}, 0.6)`;
+
+        return `<div class="heatmap-cell" 
+            style="background:${bg}; border-color:${border}; color:rgb(${r},${g},${b})"
+            data-account="${acc.id}"
+            onmouseenter="showHeatmapTooltip(event, '${acc.id}', ${acc.score}, ${acc.connections}, ${Math.round(acc.volume)})"
+            onmouseleave="hideHeatmapTooltip()">
+            <span class="heatmap-cell-score">${acc.score}</span>
+            <span class="heatmap-cell-id">${acc.id.length > 10 ? acc.id.substring(0, 10) + '…' : acc.id}</span>
+        </div>`;
+    }).join('');
+
+    // Click to open account panel
+    grid.querySelectorAll('.heatmap-cell').forEach(cell => {
+        cell.addEventListener('click', () => {
+            openAccountPanel(cell.dataset.account);
+        });
+    });
+}
+
+function showHeatmapTooltip(event, id, score, connections, volume) {
+    const tooltip = $('#heatmapTooltip');
+    if (!tooltip) return;
+    tooltip.innerHTML = `
+        <strong>${id}</strong><br>
+        Risk Score: <span style="color:${score >= 70 ? '#ef476f' : score >= 40 ? '#ffd166' : '#06d6a0'}">${score}</span><br>
+        Connections: ${connections}<br>
+        Volume: $${volume.toLocaleString()}
+    `;
+    tooltip.classList.remove('hidden');
+    tooltip.style.left = (event.clientX + 15) + 'px';
+    tooltip.style.top = (event.clientY + 15) + 'px';
+}
+
+function hideHeatmapTooltip() {
+    const tooltip = $('#heatmapTooltip');
+    if (tooltip) tooltip.classList.add('hidden');
+}
+
+function initHeatmapControls() {
+    const sortSelect = $('#heatmapSort');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            if (State.data) buildRiskHeatmap(State.data);
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTION 18: RISK SCORE COMPARISON
+// ═══════════════════════════════════════════════════════════════
+
+function initComparison() {
+    const toggleBtn = $('#compareToggleBtn');
+    const closeBtn = $('#closeComparisonPanel');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            State.comparisonMode = !State.comparisonMode;
+            toggleBtn.classList.toggle('active', State.comparisonMode);
+            const panel = $('#comparisonPanel');
+            panel.classList.toggle('hidden', !State.comparisonMode);
+            if (State.comparisonMode) {
+                showAlert('info', 'Comparison Mode', 'Click accounts in the graph to add them for comparison.');
+            }
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            State.comparisonMode = false;
+            State.comparisonAccounts = [];
+            $('#comparisonPanel').classList.add('hidden');
+            $('#compareToggleBtn').classList.remove('active');
+            renderComparison();
+        });
+    }
+}
+
+function addToComparison(accountId) {
+    if (!State.comparisonMode) return;
+    if (State.comparisonAccounts.length >= 5) {
+        showAlert('warning', 'Max Accounts', 'You can compare up to 5 accounts at a time.');
+        return;
+    }
+    if (State.comparisonAccounts.includes(accountId)) {
+        State.comparisonAccounts = State.comparisonAccounts.filter(id => id !== accountId);
+    } else {
+        State.comparisonAccounts.push(accountId);
+    }
+    renderComparison();
+}
+
+function renderComparison() {
+    const accountsDiv = $('#comparisonAccounts');
+    const detailsDiv = $('#comparisonDetails');
+    const canvas = $('#comparisonChart');
+
+    if (!accountsDiv || !State.data) return;
+
+    // Render chips
+    accountsDiv.innerHTML = State.comparisonAccounts.map(id => {
+        const sus = State.data.suspicious_accounts.find(a => a.account_id === id);
+        const score = sus ? sus.suspicion_score : 0;
+        return `<div class="comparison-chip">
+            <span>${id}</span>
+            <span class="risk-badge ${score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low'}">${score}</span>
+            <button onclick="removeFromComparison('${id}')">✕</button>
+        </div>`;
+    }).join('');
+
+    if (State.comparisonAccounts.length === 0) {
+        detailsDiv.innerHTML = '';
+        return;
+    }
+
+    // Draw bar chart
+    drawComparisonChart(canvas);
+
+    // Comparison table
+    let tableHtml = '<table class="comparison-table"><thead><tr><th>Metric</th>';
+    State.comparisonAccounts.forEach(id => {
+        tableHtml += `<th>${id.length > 12 ? id.substring(0, 12) + '…' : id}</th>`;
+    });
+    tableHtml += '</tr></thead><tbody>';
+
+    const metrics = ['Risk Score', 'In-Degree', 'Out-Degree', 'Total Inflow', 'Total Outflow', 'Patterns'];
+    metrics.forEach(metric => {
+        tableHtml += `<tr><td class="metric-label">${metric}</td>`;
+        State.comparisonAccounts.forEach(id => {
+            const localData = buildLocalAccountData(id);
+            let value = '';
+            switch (metric) {
+                case 'Risk Score': value = localData.suspicion_score; break;
+                case 'In-Degree': value = localData.stats.in_degree || 0; break;
+                case 'Out-Degree': value = localData.stats.out_degree || 0; break;
+                case 'Total Inflow': value = '$' + (localData.stats.total_in_amount || 0).toLocaleString(); break;
+                case 'Total Outflow': value = '$' + (localData.stats.total_out_amount || 0).toLocaleString(); break;
+                case 'Patterns': value = localData.detected_patterns.join(', ') || 'None'; break;
+            }
+            tableHtml += `<td>${value}</td>`;
+        });
+        tableHtml += '</tr>';
+    });
+    tableHtml += '</tbody></table>';
+    detailsDiv.innerHTML = tableHtml;
+}
+
+function removeFromComparison(id) {
+    State.comparisonAccounts = State.comparisonAccounts.filter(a => a !== id);
+    renderComparison();
+}
+
+function drawComparisonChart(canvas) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+    const chartW = w - padding.left - padding.right;
+    const chartH = h - padding.top - padding.bottom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Background
+    ctx.fillStyle = 'rgba(17, 24, 39, 0.5)';
+    ctx.fillRect(0, 0, w, h);
+
+    if (State.comparisonAccounts.length === 0) return;
+
+    const barWidth = Math.min(60, chartW / State.comparisonAccounts.length - 10);
+    const gap = (chartW - barWidth * State.comparisonAccounts.length) / (State.comparisonAccounts.length + 1);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.6)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const yPos = padding.top + (chartH * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, yPos);
+        ctx.lineTo(w - padding.right, yPos);
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(100 - (i * 25), padding.left - 8, yPos + 4);
+    }
+
+    // Bars
+    State.comparisonAccounts.forEach((id, i) => {
+        const sus = State.data.suspicious_accounts.find(a => a.account_id === id);
+        const score = sus ? sus.suspicion_score : 0;
+        const barH = (score / 100) * chartH;
+        const x = padding.left + gap + i * (barWidth + gap);
+        const y = padding.top + chartH - barH;
+
+        // Bar gradient
+        const gradient = ctx.createLinearGradient(x, y, x, y + barH);
+        if (score >= 70) {
+            gradient.addColorStop(0, '#ef476f');
+            gradient.addColorStop(1, 'rgba(239, 71, 111, 0.3)');
+        } else if (score >= 40) {
+            gradient.addColorStop(0, '#ffd166');
+            gradient.addColorStop(1, 'rgba(255, 209, 102, 0.3)');
+        } else {
+            gradient.addColorStop(0, '#06d6a0');
+            gradient.addColorStop(1, 'rgba(6, 214, 160, 0.3)');
+        }
+
+        // Draw bar with rounded top
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        const radius = 4;
+        ctx.moveTo(x, y + barH);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.lineTo(x + barWidth - radius, y);
+        ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + radius);
+        ctx.lineTo(x + barWidth, y + barH);
+        ctx.fill();
+
+        // Score label
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(score, x + barWidth / 2, y - 6);
+
+        // Account label
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '9px Inter, sans-serif';
+        const shortId = id.length > 8 ? id.substring(0, 8) + '…' : id;
+        ctx.fillText(shortId, x + barWidth / 2, padding.top + chartH + 20);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  INITIALIZATION
 // ═══════════════════════════════════════════════════════════════
 
@@ -1363,10 +2074,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initGraphControls();
     initJsonControls();
     initAccountPanel();
+    initCommandPalette();
+    initHeatmapControls();
+    initComparison();
 
     // Analyze button
     $('#analyzeBtn').addEventListener('click', runAnalysis);
 
     // Back to dashboard
     $('#backToDashboard').addEventListener('click', showDashboardPage);
+
+    // Export PDF
+    const exportBtn = $('#exportReportBtn');
+    if (exportBtn) exportBtn.addEventListener('click', generateReport);
 });
