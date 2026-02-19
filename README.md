@@ -240,6 +240,27 @@ docker-compose up
    ```
 4. Your app will be live at `https://anti-mul.fly.dev` (or the app name you chose).
 
+### Option 5: Vercel (Serverless)
+
+1. **Install Vercel CLI**: `npm i -g vercel` (or use the web interface)
+2. **Sign up** at [vercel.com](https://vercel.com) and connect your GitHub account
+3. **Deploy** (from project root):
+   ```bash
+   vercel   # First time: follow prompts, link to GitHub repo
+   vercel --prod   # Deploy to production
+   ```
+   Or use the **Vercel Dashboard**:
+   - Click **"New Project"**
+   - Import your GitHub repository `veera-raghav/RIFT26QC`
+   - Vercel will auto-detect the configuration (`vercel.json` is already set up)
+   - Click **"Deploy"**
+4. **Environment Variables** (if using Neo4j):
+   - In Vercel Dashboard → Project Settings → Environment Variables
+   - Add: `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
+5. Your app will be live at `https://anti-mul.vercel.app` (or your custom domain)
+
+**Note**: Vercel uses serverless functions with a 30-second timeout limit. For very large CSV files (>10K transactions), consider using Render or Fly.io instead.
+
 ---
 
 ## ⚠ Known Limitations
