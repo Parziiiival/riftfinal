@@ -30,7 +30,8 @@
 | **Data Processing** | Pandas |
 | **Frontend** | HTML5, CSS3, Vanilla JavaScript |
 | **Visualization** | Cytoscape.js |
-| **Deployment** | Any ASGI-compatible server |
+| **Build Tool** | Node.js, npm (for deployment configuration) |
+| **Deployment** | Any ASGI-compatible server, Netlify, Vercel, Render, Railway, Fly.io |
 
 ---
 
@@ -260,6 +261,19 @@ docker-compose up
 5. Your app will be live at `https://anti-mul.vercel.app` (or your custom domain)
 
 **Note**: Vercel uses serverless functions with a 30-second timeout limit. For very large CSV files (>10K transactions), consider using Render or Fly.io instead.
+
+### Option 6: Netlify
+
+1. **Sign up** at [netlify.com](https://netlify.com) and connect your GitHub account
+2. **New Site from Git**:
+   - Repository: `veera-raghav/RIFT26QC`
+   - Branch: `main`
+   - Build settings are automatically detected from `netlify.toml`
+3. **Deploy** — Netlify will build and deploy your static frontend
+4. For the Python backend API, deploy separately to a service like Render or Railway, then update the frontend API calls to point to the deployed backend URL
+5. Your frontend will be live at `https://your-site-name.netlify.app`
+
+**Note**: Netlify is configured for static site deployment. The Python backend should be deployed separately to avoid timeout issues with large analyses.
 
 ---
 
