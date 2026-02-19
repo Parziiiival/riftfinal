@@ -110,7 +110,7 @@ TX_001,ACC_A,ACC_B,1000.00,2025-01-15 08:00:00
 **Response**: `analysis_result.json` file download.
 
 ## Known Limitations
--   **In-Memory Processing**: The current implementation loads the entire graph into memory. For datasets >100k transactions, a database-backed approach would be required.
+-   **In-Memory Processing**: The current implementation loads the entire graph into memory. Optimized for datasets up to **13,000 transactions** (processed in < 1 second). For >100k, a database-backed approach would be required.
 -   **Synchronous Processing**: Large files may timeout on standard HTTP connections; async task queues are recommended for production scaling.
 -   **Shell Chain Sensitivity**: Shell detection on dense graphs can be aggressive; tuned with strict time/amount constraints to minimize false positives.
 

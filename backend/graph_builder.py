@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 REQUIRED_COLUMNS = ["transaction_id", "sender_id", "receiver_id", "amount", "timestamp"]
-MAX_TRANSACTIONS = 10_000
+MAX_TRANSACTIONS = 13_000
 
 
 # ── Data classes ───────────────────────────────────────────────────

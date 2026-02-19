@@ -88,11 +88,16 @@ async def analyze(file: UploadFile = File(...)):
     result = run_scoring_pipeline(graph, cycle_rings, smurf_rings, shell_rings)
 
     # ── Step 4: Compute graph layout for visualization ────────────
-    layout = compute_layout(
-        graph,
-        result["suspicious_accounts"],
-        result["fraud_rings"],
-    )
+    try:
+        layout = compute_layout(
+            graph,
+            result["suspicious_accounts"],
+            result["fraud_rings"],
+        )
+    except Exception as e:
+        print(f"Layout computation failed: {e}")
+        # Fallback: empty graph data to prevent 500 error
+        layout = {"nodes": [], "edges": []}
 
     elapsed = round(time.time() - start_time, 2)
     result["summary"]["processing_time_seconds"] = elapsed

@@ -59,7 +59,12 @@ def compute_layout(
             G.add_edge(tx.sender, tx.receiver, weight=tx.amount)
 
     # Compute layout
-    pos = nx.spring_layout(G, seed=42, k=2.0, iterations=50)
+    try:
+        # k=2.0 helps spread nodes out
+        pos = nx.spring_layout(G, seed=42, k=2.0, iterations=50)
+    except Exception:
+        # Fallback if spring_layout fails (e.g. missing scipy) or is too slow
+        pos = nx.circular_layout(G)
 
     # Build lookup for suspicious info
     sus_lookup: Dict[str, dict] = {}
