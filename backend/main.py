@@ -1,12 +1,14 @@
 """
-main.py — FastAPI Application Entry Point
+main.py — FastAPI server for the Fraud Detection Pipeline.
 
 Endpoints:
-  POST /analyze   — Accept CSV, process synchronously, return full result
-  GET  /download-json — Return exact required JSON only (no graph data)
+  POST /analyze      — Upload CSV, run full pipeline, return results + graph layout
+  GET  /download-json — Return the latest analysis result as JSON
+  GET  /health       — Health check
+  GET  /account/{id} — Deep-dive data for a single account
+  GET  /neo4j/graph  — Typed graph from Neo4j (optional)
 
-Track: processing_time_seconds
-No async.  No background jobs.
+Serves the frontend from ../frontend/
 """
 
 from __future__ import annotations
@@ -14,47 +16,57 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.graph_builder import parse_csv
+from backend.graph_builder import parse_csv, GraphData
 from backend.cycle_detector import detect_cycles
 from backend.smurf_detector import detect_smurfing
 from backend.shell_detector import detect_shell_chains
 from backend.scoring_engine import run_scoring_pipeline
 from backend.graph_layout import compute_layout
+# Try importing Neo4j modules; strictly likely present from remote
+try:
+    from backend.neo4j_graph import sync_to_neo4j, fetch_graph_from_neo4j
+except ImportError:
+    # Fallback if file missing (though git merge should provide it)
+    def sync_to_neo4j(*args, **kwargs): return False
+    def fetch_graph_from_neo4j(): return None
 
-app = FastAPI(
-    title="Money Muling Detection Engine",
-    description="Detects money muling networks using graph-based analysis.",
-    version="1.0.0",
-)
+app = FastAPI(title="Anti-Mul Fraud Detection API", version="1.0.0")
 
-# ── CORS — allow all origins for dev/demo ─────────────────────────
+# ── CORS ──────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── Serve frontend static files ───────────────────────────────
+# ── Static files ──────────────────────────────────────────────────
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FRONTEND_DIR = _PROJECT_ROOT / "frontend"
+
 if _FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR)), name="static")
 
-# ── In-memory cache for the latest analysis (strict JSON only) ────
-_last_download_json: Optional[dict] = None
+# ── Module-level store for the latest analysis result ─────────────
+_last_result: dict | None = None
+_last_graph = None
+
+
+# ── Health ────────────────────────────────────────────────────────
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/")
-def serve_index():
+def root():
     """Serve the frontend index.html."""
     index_file = _FRONTEND_DIR / "index.html"
     if index_file.exists():
@@ -62,15 +74,13 @@ def serve_index():
     return {"status": "ok", "service": "Money Muling Detection Engine"}
 
 
+# ── Analyze ───────────────────────────────────────────────────────
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    """
-    Accept a CSV upload, run the full fraud detection pipeline,
-    and return strict JSON output.
-    """
-    global _last_download_json
+def analyze(file: UploadFile = File(...)):
+    """Upload a CSV file and run the full fraud detection pipeline."""
+    global _last_result, _last_graph
 
-    # ── Validate file type ────────────────────────────────────────
+    # ── Validate file type (checking extension and content type) ──
     filename = (file.filename or "").lower()
     ct = (file.content_type or "").lower()
     is_csv = (
@@ -86,84 +96,202 @@ async def analyze(file: UploadFile = File(...)):
             detail="Invalid file type. Please upload a CSV file.",
         )
 
-    start_time = time.time()
-
-    # ── Read file content ─────────────────────────────────────────
     try:
-        raw_bytes = await file.read()
-        content = raw_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="File encoding must be UTF-8.")
+        # Read and decode
+        raw_bytes = file.file.read()
+        try:
+            raw = raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            try:
+                raw = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    raw = raw_bytes.decode("latin-1")
+                except Exception:
+                    raise HTTPException(status_code=400, detail="File must be UTF-8 encoded.")
 
-    # ── Step 1: Parse CSV & build graph ───────────────────────────
-    try:
-        graph = parse_csv(content)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        start = time.time()
 
-    # ── Step 2: Pattern detection ─────────────────────────────────
-    cycle_rings = detect_cycles(graph)
-    smurf_rings = detect_smurfing(graph)
-    shell_rings = detect_shell_chains(graph)
+        try:
+            graph = parse_csv(raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
 
-    # ── Step 3: Scoring pipeline ──────────────────────────────────
-    result = run_scoring_pipeline(graph, cycle_rings, smurf_rings, shell_rings)
+        _last_graph = graph
 
-    # ── Step 4: Compute graph layout for visualization ────────────
-    try:
+        # Pattern detection
+        cycle_rings = detect_cycles(graph)
+        smurf_rings = detect_smurfing(graph)
+        shell_rings = detect_shell_chains(graph)
+
+        # Scoring
+        result = run_scoring_pipeline(graph, cycle_rings, smurf_rings, shell_rings)
+
+        # Layout
         layout = compute_layout(
             graph,
             result["suspicious_accounts"],
-            result["fraud_rings"],
+            result.get("_all_rings", []),
         )
+
+        # Attach timestamps to edges for frontend if needed
+        tx_timestamp_map = {tx.transaction_id: tx.timestamp.isoformat() for tx in graph.transactions}
+        for edge in layout["edges"]:
+            edge["timestamp"] = tx_timestamp_map.get(edge["transaction_id"], "")
+
+        # Clean up internal data
+        result.pop("_all_rings", None)
+
+        # Neo4j Sync
+        neo4j_synced = False
+        try:
+            neo4j_synced = sync_to_neo4j(
+                graph,
+                result["suspicious_accounts"],
+                result["fraud_rings"],
+            )
+        except Exception as e:
+            print(f"DEBUG: Neo4j sync skipped: {e}")
+
+        processing_time_seconds = round(time.time() - start, 4)
+        result["summary"]["processing_time_seconds"] = processing_time_seconds
+
+        response = {
+            "graph_data": layout,
+            "suspicious_accounts": result["suspicious_accounts"],
+            "fraud_rings": result["fraud_rings"],
+            "summary": result["summary"],
+            "processing_time_seconds": processing_time_seconds,
+            "neo4j_synced": neo4j_synced,
+        }
+
+        _last_result = response
+
+        return JSONResponse(content=response)
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Layout computation failed: {e}")
-        # Fallback: empty graph data to prevent 500 error
-        layout = {"nodes": [], "edges": []}
-
-    elapsed = round(time.time() - start_time, 2)
-    result["summary"]["processing_time_seconds"] = elapsed
-
-    # Remove internal data before sending
-    result.pop("_all_rings", [])
-
-    # ── Cache the strict download JSON (no graph_data) ────────────
-    _last_download_json = {
-        "suspicious_accounts": result["suspicious_accounts"],
-        "fraud_rings": result["fraud_rings"],
-        "summary": result["summary"],
-    }
-
-    # ── Build final response (includes graph_data for frontend) ───
-    response: dict[str, Any] = {
-        "suspicious_accounts": result["suspicious_accounts"],
-        "fraud_rings": result["fraud_rings"],
-        "summary": result["summary"],
-        "graph_data": layout,
-    }
-
-    return response
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
+# ── Account Deep-Dive ─────────────────────────────────────────────
+@app.get("/account/{account_id}")
+def account_detail(account_id: str):
+    """Return deep-dive data for a specific account."""
+    if _last_result is None or _last_graph is None:
+        raise HTTPException(status_code=404, detail="No analysis has been run yet.")
+
+    graph = _last_graph
+    if account_id not in graph.all_nodes:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+
+    stats = graph.node_stats.get(account_id)
+
+    outgoing = []
+    for tx in graph.adj_list.get(account_id, []):
+        outgoing.append({
+            "transaction_id": tx.transaction_id,
+            "to": tx.receiver,
+            "amount": tx.amount,
+            "timestamp": tx.timestamp.isoformat(),
+        })
+
+    incoming = []
+    for tx in graph.reverse_adj_list.get(account_id, []):
+        incoming.append({
+            "transaction_id": tx.transaction_id,
+            "from": tx.sender,
+            "amount": tx.amount,
+            "timestamp": tx.timestamp.isoformat(),
+        })
+
+    sus_info = None
+    for sa in _last_result.get("suspicious_accounts", []):
+        if sa["account_id"] == account_id:
+            sus_info = sa
+            break
+
+    member_rings = []
+    for ring in _last_result.get("fraud_rings", []):
+        if account_id in ring["member_accounts"]:
+            member_rings.append(ring)
+
+    reasons = []
+    if sus_info:
+        patterns = sus_info.get("detected_patterns", [])
+        for p in patterns:
+            if p.startswith("cycle_length_"):
+                length = p.split("_")[-1]
+                reasons.append(f"Part of a {length}-node circular money loop")
+            elif p == "cycle":
+                reasons.append("Involved in circular transaction routing")
+            elif p == "smurfing":
+                reasons.append("Fan-out pattern: distributing funds to many accounts")
+            elif p == "shell":
+                reasons.append("Shell chain: layered pass-through transactions")
+
+        if len(member_rings) > 1:
+            reasons.append(f"Member of {len(member_rings)} fraud rings simultaneously")
+
+        total_tx = len(outgoing) + len(incoming)
+        if total_tx > 5:
+            reasons.append(f"High transaction velocity: {total_tx} transactions detected")
+
+    return JSONResponse(content={
+        "account_id": account_id,
+        "suspicion_score": sus_info["suspicion_score"] if sus_info else 0,
+        "is_suspicious": sus_info is not None,
+        "detected_patterns": sus_info["detected_patterns"] if sus_info else [],
+        "reasons": reasons,
+        "rings": member_rings,
+        "stats": {
+            "in_degree": stats.in_degree if stats else 0,
+            "out_degree": stats.out_degree if stats else 0,
+            "total_in_amount": round(stats.total_in_amount, 2) if stats else 0,
+            "total_out_amount": round(stats.total_out_amount, 2) if stats else 0,
+        },
+        "outgoing_transactions": sorted(outgoing, key=lambda x: x["timestamp"]),
+        "incoming_transactions": sorted(incoming, key=lambda x: x["timestamp"]),
+    })
+
+
+# ── Neo4j Graph ────────────────────────────────────────────────────
+@app.get("/neo4j/graph")
+def neo4j_graph():
+    """Return the graph from Neo4j with typed Account nodes (if Neo4j is configured)."""
+    data = fetch_graph_from_neo4j()
+    if data is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j not configured (set NEO4J_URI) or no graph data available.",
+        )
+    return JSONResponse(content=data)
+
+
+# ── Download JSON ──────────────────────────────────────────────────
 @app.get("/download-json")
 def download_json():
-    """
-    Return exact required JSON only — no graph_data.
-    Uses the result from the most recent POST /analyze call.
-    """
-    if _last_download_json is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No analysis has been run yet. Upload a CSV via POST /analyze first.",
-        )
+    """Return the latest analysis result as JSON."""
+    if _last_result is None:
+        raise HTTPException(status_code=404, detail="No analysis has been run yet.")
+
+    download_payload = {
+        "suspicious_accounts": _last_result["suspicious_accounts"],
+        "fraud_rings": _last_result["fraud_rings"],
+        "summary": {
+            **_last_result["summary"],
+            "processing_time_seconds": _last_result["processing_time_seconds"],
+        },
+    }
+
     return JSONResponse(
-        content=_last_download_json,
-        media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=analysis_result.json"},
+        content=download_payload,
+        headers={"Content-Disposition": 'attachment; filename="analysis_result.json"'},
     )
 
 
-# ── Direct run ────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
