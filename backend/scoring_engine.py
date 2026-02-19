@@ -174,7 +174,7 @@ def run_scoring_pipeline(
     ):
         detected = sorted(account_patterns[account])
         ring_id_list = sorted(set(account_rings.get(account, [])))
-        primary_ring = ring_id_list[0] if ring_id_list else None
+        primary_ring = ring_id_list[0] if ring_id_list else ""
         suspicious_accounts.append({
             "account_id": account,
             "suspicion_score": final_scores[account],
