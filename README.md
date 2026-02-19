@@ -231,11 +231,14 @@ docker-compose up
 
 ### Option 4: Fly.io
 
-```bash
-# Install flyctl: https://fly.io/docs/getting-started/installing-flyctl/
-fly launch
-fly deploy
-```
+1. **Install flyctl**: [fly.io/docs/getting-started/installing-flyctl](https://fly.io/docs/getting-started/installing-flyctl/)
+2. **Log in**: `fly auth login`
+3. **Deploy** (from project root):
+   ```bash
+   fly launch   # First time: creates app, use existing fly.toml
+   fly deploy   # Subsequent deploys
+   ```
+4. Your app will be live at `https://anti-mul.fly.dev` (or the app name you chose).
 
 ---
 

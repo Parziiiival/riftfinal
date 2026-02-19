@@ -15,8 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
-# Expose port
-EXPOSE 8000
+# Expose port (Fly.io uses 8080 by default)
+EXPOSE 8080
 
-# Run the application (use PORT env var for Render/Railway compatibility)
-CMD python -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Run the application (PORT set by platform: Fly=8080, Render/Railway=$PORT)
+CMD python -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080}
