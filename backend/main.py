@@ -29,7 +29,7 @@ from backend.scoring_engine import run_scoring_pipeline
 from backend.graph_layout import compute_layout
 from backend.neo4j_graph import sync_to_neo4j, fetch_graph_from_neo4j
 
-app = FastAPI(title="RIFT Fraud Detection API", version="1.0.0")
+app = FastAPI(title="Anti-Mul Fraud Detection API", version="1.0.0")
 
 # ── CORS ──────────────────────────────────────────────────────────
 app.add_middleware(

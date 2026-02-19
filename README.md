@@ -1,4 +1,4 @@
-# RIFT — Real-time Intelligence for Financial Threats
+# Anti-Mul — Real-time Intelligence for Financial Threats
 
 > A graph-based money muling detection engine with an interactive fraud visualization dashboard.
 

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RIFT — Fraud Detection Intelligence Platform</title>
+  <title>Anti-Mul — Fraud Detection Intelligence Platform</title>
   <meta name="description"
     content="Real-time Interactive Fraud Tracking — Upload transaction data, detect fraud rings, visualize suspicious patterns, and investigate accounts." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,7 +36,7 @@
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       </div>
-      <span class="brand-name">RIFT</span>
+      <span class="brand-name">Anti-Mul</span>
       <span class="brand-tagline">Fraud Intelligence Platform</span>
     </div>
     <div class="nav-controls">
@@ -87,7 +87,7 @@
           <span class="hero-line">Stay Ahead.</span>
         </h1>
         <p class="hero-description animate-on-scroll">
-          RIFT analyzes transaction networks in real-time to uncover hidden fraud rings,
+          Anti-Mul analyzes transaction networks in real-time to uncover hidden fraud rings,
           smurfing patterns, and shell chains with precision scoring and interactive graph exploration.
         </p>
         <div class="hero-actions animate-on-scroll">
@@ -359,7 +359,7 @@
     <!-- Footer -->
     <footer class="dashboard-footer">
       <div class="footer-content">
-        <span class="footer-brand">RIFT v1.0</span>
+        <span class="footer-brand">Anti-Mul v1.0</span>
         <span class="footer-sep">·</span>
         <span>Fraud Intelligence Platform</span>
       </div>
@@ -521,6 +521,11 @@
 
       <!-- ═══ GRAPH PANEL ═══ -->
       <div class="tab-panel active" id="graphPanel">
+        <div id="riskSectionLegend" class="risk-section-legend hidden">
+          <span class="risk-legend no-risk"><span class="risk-dot"></span> No Risk</span>
+          <span class="risk-legend low-risk"><span class="risk-dot"></span> Low Risk</span>
+          <span class="risk-legend high-risk"><span class="risk-dot"></span> High Risk</span>
+        </div>
         <div class="graph-container">
           <!-- Graph Toolbar -->
           <div class="graph-toolbar">
@@ -553,11 +558,12 @@
             <div class="toolbar-group">
               <label class="toolbar-label">Layout</label>
               <select id="layoutSelect" class="toolbar-select">
-                <option value="preset">Default</option>
+                <option value="preset">3 Risk Sections</option>
+                <option value="rbtree">Tree (Red-Black)</option>
+                <option value="grid">Grid</option>
                 <option value="cose">Force-Directed</option>
                 <option value="circle">Circle</option>
                 <option value="concentric">Concentric</option>
-                <option value="grid">Grid</option>
               </select>
             </div>
             <button class="toolbar-btn" id="fitGraphBtn" title="Fit to view">

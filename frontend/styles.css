@@ -1,4 +1,4 @@
-/* RIFT — Fraud Detection Intelligence Platform */
+/* Anti-Mul — Fraud Detection Intelligence Platform */
 :root {
   --bg-primary: #0a0e17;
   --bg-secondary: #111827;
@@ -1325,6 +1325,33 @@ tbody tr:last-child td {
 .tab-panel.active {
   display: block
 }
+
+/* ═══ RISK SECTION LEGEND ═══ */
+.risk-section-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 10px 16px;
+  background: rgba(17, 24, 39, 0.6);
+  border-bottom: 1px solid var(--border);
+  font-size: .85rem;
+  font-weight: 600
+}
+.risk-section-legend.hidden { display: none }
+.risk-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px
+}
+.risk-legend .risk-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0
+}
+.risk-legend.no-risk .risk-dot { background: #374151 }
+.risk-legend.low-risk .risk-dot { background: #ffd166 }
+.risk-legend.high-risk .risk-dot { background: #ef476f }
 
 /* ═══ GRAPH ═══ */
 .graph-container {

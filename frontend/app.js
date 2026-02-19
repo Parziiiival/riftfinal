@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   RIFT — Fraud Detection Intelligence Platform
+   Anti-Mul — Fraud Detection Intelligence Platform
    Main Application Logic
    ═══════════════════════════════════════════════════════════════ */
 
@@ -19,6 +19,119 @@ const State = {
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+
+// ═══════════════════════════════════════════════════════════════
+//  RED-BLACK TREE (for Tree layout)
+// ═══════════════════════════════════════════════════════════════
+const RB = { RED: 1, BLACK: 0 };
+function RedBlackTree() {
+    this.NIL = { color: RB.BLACK, left: null, right: null };
+    this.root = this.NIL;
+}
+RedBlackTree.prototype.compare = function (a, b) {
+    if (a[0] !== b[0]) return a[0] - b[0];
+    return String(a[1]).localeCompare(String(b[1]));
+};
+RedBlackTree.prototype.rotateLeft = function (x) {
+    const y = x.right;
+    x.right = y.left;
+    if (y.left !== this.NIL) y.left.parent = x;
+    y.parent = x.parent;
+    if (x.parent === this.NIL) this.root = y;
+    else if (x === x.parent.left) x.parent.left = y;
+    else x.parent.right = y;
+    y.left = x;
+    x.parent = y;
+};
+RedBlackTree.prototype.rotateRight = function (x) {
+    const y = x.left;
+    x.left = y.right;
+    if (y.right !== this.NIL) y.right.parent = x;
+    y.parent = x.parent;
+    if (x.parent === this.NIL) this.root = y;
+    else if (x === x.parent.right) x.parent.right = y;
+    else x.parent.left = y;
+    y.right = x;
+    x.parent = y;
+};
+RedBlackTree.prototype.insertFixup = function (z) {
+    while (z.parent.color === RB.RED) {
+        if (z.parent === z.parent.parent.left) {
+            const y = z.parent.parent.right;
+            if (y.color === RB.RED) {
+                z.parent.color = RB.BLACK;
+                y.color = RB.BLACK;
+                z.parent.parent.color = RB.RED;
+                z = z.parent.parent;
+            } else {
+                if (z === z.parent.right) {
+                    z = z.parent;
+                    this.rotateLeft(z);
+                }
+                z.parent.color = RB.BLACK;
+                z.parent.parent.color = RB.RED;
+                this.rotateRight(z.parent.parent);
+            }
+        } else {
+            const y = z.parent.parent.left;
+            if (y.color === RB.RED) {
+                z.parent.color = RB.BLACK;
+                y.color = RB.BLACK;
+                z.parent.parent.color = RB.RED;
+                z = z.parent.parent;
+            } else {
+                if (z === z.parent.left) {
+                    z = z.parent;
+                    this.rotateRight(z);
+                }
+                z.parent.color = RB.BLACK;
+                z.parent.parent.color = RB.RED;
+                this.rotateLeft(z.parent.parent);
+            }
+        }
+    }
+    this.root.color = RB.BLACK;
+};
+RedBlackTree.prototype.insert = function (key, value) {
+    const z = { key, value, color: RB.RED, left: this.NIL, right: this.NIL, parent: this.NIL };
+    let y = this.NIL;
+    let x = this.root;
+    while (x !== this.NIL) {
+        y = x;
+        x = this.compare(z.key, x.key) < 0 ? x.left : x.right;
+    }
+    z.parent = y;
+    if (y === this.NIL) this.root = z;
+    else if (this.compare(z.key, y.key) < 0) y.left = z;
+    else y.right = z;
+    this.insertFixup(z);
+};
+RedBlackTree.prototype.inorder = function (node, fn) {
+    if (node === this.NIL || !node) return;
+    this.inorder(node.left, fn);
+    fn(node);
+    this.inorder(node.right, fn);
+};
+RedBlackTree.prototype.assignDepths = function (node, d) {
+    if (node === this.NIL || !node) return;
+    node.depth = d;
+    this.assignDepths(node.left, d + 1);
+    this.assignDepths(node.right, d + 1);
+};
+RedBlackTree.prototype.computeLayout = function (hSpace, vSpace) {
+    const inorderList = [];
+    this.inorder(this.root, (n) => inorderList.push(n));
+    this.assignDepths(this.root, 0);
+    const posMap = {};
+    inorderList.forEach((n, i) => {
+        posMap[n.value.id] = {
+            x: (i - (inorderList.length - 1) / 2) * hSpace,
+            y: n.depth * vSpace,
+            isRed: n.color === RB.RED,
+        };
+    });
+    return posMap;
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  PARTICLE SYSTEM
@@ -519,11 +632,15 @@ function generateInsights(data) {
 // ═══════════════════════════════════════════════════════════════
 
 function buildGraph(data) {
+    const riskSections = data.graph_data.risk_sections || { no_risk: { count: 0 }, low_risk: { count: 0 }, high_risk: { count: 0 } };
+    updateRiskSectionLegend(riskSections);
+
     const nodes = data.graph_data.nodes.map(n => ({
         data: {
             id: n.id,
             suspicious: n.suspicious && !State.legitimateAccounts.has(n.id),
             score: n.suspicion_score,
+            riskTier: n.risk_tier || (n.suspicion_score >= 70 ? 'high_risk' : n.suspicion_score > 0 ? 'low_risk' : 'no_risk'),
             patterns: n.patterns,
             ringId: n.ring_id,
             inDeg: n.in_degree,
@@ -549,6 +666,9 @@ function buildGraph(data) {
 
     if (State.cy) State.cy.destroy();
 
+    const nNodes = nodes.length;
+    const nEdges = edges.length;
+
     State.cy = cytoscape({
         container: document.getElementById('cyGraph'),
         elements: { nodes, edges },
@@ -559,15 +679,21 @@ function buildGraph(data) {
                     'label': 'data(label)',
                     'text-valign': 'center',
                     'text-halign': 'center',
-                    'font-size': '9px',
+                    'font-size': nNodes > 60 ? '8px' : '9px',
                     'font-family': 'Inter, sans-serif',
                     'font-weight': '600',
                     'color': '#e2e8f0',
                     'text-outline-color': '#0a0e17',
                     'text-outline-width': '2px',
-                    'background-color': (ele) => getNodeColor(ele.data('score'), ele.data('suspicious')),
-                    'width': (ele) => Math.max(25, Math.min(60, 20 + ele.data('totalDeg') * 4)),
-                    'height': (ele) => Math.max(25, Math.min(60, 20 + ele.data('totalDeg') * 4)),
+                    'background-color': (ele) => getNodeColorByTier(ele.data('riskTier'), ele.data('score'), ele.data('suspicious')),
+                    'width': (ele) => {
+                        const base = nNodes > 80 ? 22 : (nNodes > 40 ? 26 : 30);
+                        return Math.max(20, Math.min(48, base + ele.data('totalDeg') * 2));
+                    },
+                    'height': (ele) => {
+                        const base = nNodes > 80 ? 22 : (nNodes > 40 ? 26 : 30);
+                        return Math.max(20, Math.min(48, base + ele.data('totalDeg') * 2));
+                    },
                     'border-width': (ele) => ele.data('ringId') ? 3 : 1,
                     'border-color': (ele) => ele.data('ringId') ? '#ef476f' : '#1e293b',
                     'overlay-opacity': 0,
@@ -588,13 +714,16 @@ function buildGraph(data) {
             {
                 selector: 'edge',
                 style: {
-                    'width': (ele) => Math.max(1, Math.min(5, ele.data('amount') / 3000)),
-                    'line-color': '#2d3748',
-                    'target-arrow-color': '#2d3748',
+                    'width': (ele) => {
+                        const baseW = nEdges > 100 ? 0.8 : (nEdges > 50 ? 1 : 1.5);
+                        return Math.max(0.6, Math.min(3, baseW * (ele.data('amount') / 5000 || 0.5)));
+                    },
+                    'line-color': '#334155',
+                    'target-arrow-color': '#334155',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier',
-                    'arrow-scale': 0.8,
-                    'opacity': 0.6,
+                    'arrow-scale': 0.6,
+                    'opacity': nEdges > 80 ? 0.35 : (nEdges > 40 ? 0.45 : 0.55),
                     'transition-property': 'line-color, target-arrow-color, opacity',
                     'transition-duration': '0.3s',
                 }
@@ -657,6 +786,22 @@ function buildGraph(data) {
                     'display': 'none',
                 }
             },
+            {
+                selector: '.rb-red',
+                style: {
+                    'background-color': '#dc2626',
+                    'border-color': '#f87171',
+                    'border-width': 2,
+                }
+            },
+            {
+                selector: '.rb-black',
+                style: {
+                    'background-color': '#1f2937',
+                    'border-color': '#4b5563',
+                    'border-width': 2,
+                }
+            },
         ],
         layout: { name: 'preset' },
         minZoom: 0.2,
@@ -685,21 +830,21 @@ function buildGraph(data) {
     });
 
     State.cy.on('mouseover', 'edge', (evt) => {
-        const d = evt.target.data();
         evt.target.style({ 'line-color': '#00b4d8', 'target-arrow-color': '#00b4d8', 'opacity': 1 });
     });
 
     State.cy.on('mouseout', 'edge', (evt) => {
         if (!evt.target.hasClass('highlighted-edge')) {
+            const baseOpacity = nEdges > 80 ? 0.35 : (nEdges > 40 ? 0.45 : 0.55);
             evt.target.style({
-                'line-color': '#2d3748',
-                'target-arrow-color': '#2d3748',
-                'opacity': 0.6,
+                'line-color': '#334155',
+                'target-arrow-color': '#334155',
+                'opacity': baseOpacity,
             });
         }
     });
 
-    State.cy.fit(undefined, 40);
+    State.cy.fit(undefined, 24);
 
     // Save original backend-computed positions for the 'Default' layout
     State.presetPositions = {};
@@ -720,15 +865,37 @@ function getNodeColor(score, suspicious) {
     return '#06d6a0';
 }
 
+function getNodeColorByTier(riskTier, score, suspicious) {
+    if (riskTier === 'no_risk') return '#374151';
+    if (riskTier === 'low_risk') return '#ffd166';
+    if (riskTier === 'high_risk') return '#ef476f';
+    return getNodeColor(score, suspicious);
+}
+
+function updateRiskSectionLegend(riskSections) {
+    const el = $('#riskSectionLegend');
+    if (!el) return;
+    const noCount = riskSections.no_risk?.count ?? 0;
+    const lowCount = riskSections.low_risk?.count ?? 0;
+    const highCount = riskSections.high_risk?.count ?? 0;
+    el.innerHTML = `
+        <span class="risk-legend no-risk"><span class="risk-dot"></span> No Risk (${noCount})</span>
+        <span class="risk-legend low-risk"><span class="risk-dot"></span> Low Risk (${lowCount})</span>
+        <span class="risk-legend high-risk"><span class="risk-dot"></span> High Risk (${highCount})</span>
+    `;
+    el.classList.remove('hidden');
+}
+
 // Tooltip
 let tooltipEl = null;
 function showTooltip(evt, data) {
     hideTooltip();
     tooltipEl = document.createElement('div');
     tooltipEl.className = 'graph-tooltip';
+    const tierColor = data.riskTier === 'high_risk' ? '#ef476f' : data.riskTier === 'low_risk' ? '#ffd166' : '#374151';
     tooltipEl.innerHTML = `
     <strong>${data.id}</strong><br>
-    Score: <span style="color:${getNodeColor(data.score, data.suspicious)}">${data.score}</span><br>
+    Tier: <span style="color:${tierColor}">${(data.riskTier || '').replace('_', ' ')}</span> | Score: ${data.score}<br>
     In: ${data.inDeg} | Out: ${data.outDeg}<br>
     ${data.patterns.length ? 'Patterns: ' + data.patterns.join(', ') : 'No patterns'}
   `;
@@ -808,7 +975,7 @@ function initGraphControls() {
     // Fit
     $('#fitGraphBtn').addEventListener('click', () => {
         if (State.cy) {
-            State.cy.fit(undefined, 40);
+            State.cy.fit(undefined, 24);
             panH.value = 50;
             panV.value = 50;
         }
@@ -834,16 +1001,31 @@ function applyLayout(layoutName) {
     if (!State.cy) return;
 
     if (layoutName === 'preset') {
-        // Restore original backend-computed positions
         State.cy.nodes().forEach(node => {
             const pos = State.presetPositions[node.data('id')];
             if (pos) node.position(pos);
         });
-        State.cy.fit(undefined, 40);
+        State.cy.nodes().removeClass('rb-red rb-black');
+        State.cy.fit(undefined, 24);
+        return;
+    }
+
+    if (layoutName === 'rbtree') {
+        applyRedBlackTreeLayout();
         return;
     }
 
     const layoutConfigs = {
+        breadthfirst: {
+            name: 'breadthfirst',
+            directed: true,
+            animate: true,
+            animationDuration: 600,
+            fit: true,
+            padding: 24,
+            spacingFactor: 1.8,
+            avoidOverlap: true,
+        },
         cose: {
             name: 'cose',
             animate: true,
@@ -854,14 +1036,14 @@ function applyLayout(layoutName) {
             gravity: 0.25,
             numIter: 300,
             fit: true,
-            padding: 40,
+            padding: 24,
         },
         circle: {
             name: 'circle',
             animate: true,
             animationDuration: 600,
             fit: true,
-            padding: 40,
+            padding: 24,
             avoidOverlap: true,
         },
         concentric: {
@@ -869,7 +1051,7 @@ function applyLayout(layoutName) {
             animate: true,
             animationDuration: 600,
             fit: true,
-            padding: 40,
+            padding: 24,
             minNodeSpacing: 30,
             concentric: (node) => node.data('suspicious') ? node.data('score') : 0,
             levelWidth: () => 2,
@@ -879,7 +1061,7 @@ function applyLayout(layoutName) {
             animate: true,
             animationDuration: 600,
             fit: true,
-            padding: 40,
+            padding: 24,
             avoidOverlap: true,
             condense: true,
             rows: undefined,
@@ -888,8 +1070,32 @@ function applyLayout(layoutName) {
 
     const config = layoutConfigs[layoutName];
     if (config) {
+        State.cy.nodes().removeClass('rb-red rb-black');
         State.cy.layout(config).run();
     }
+}
+
+function applyRedBlackTreeLayout() {
+    if (!State.cy) return;
+    const nodes = State.cy.nodes();
+    if (nodes.length === 0) return;
+    const tree = new RedBlackTree();
+    nodes.forEach((node) => {
+        const d = node.data();
+        tree.insert([d.score, d.id], { id: d.id, score: d.score });
+    });
+    const n = nodes.length;
+    const hSpace = Math.max(50, Math.min(80, 320 / Math.sqrt(n)));
+    const vSpace = Math.max(55, Math.min(75, 280 / Math.sqrt(n)));
+    const posMap = tree.computeLayout(hSpace, vSpace);
+    nodes.forEach((node) => {
+        const p = posMap[node.data('id')];
+        if (p) {
+            node.position({ x: p.x, y: p.y });
+            node.removeClass('rb-red rb-black').addClass(p.isRed ? 'rb-red' : 'rb-black');
+        }
+    });
+    State.cy.fit(undefined, 24);
 }
 
 function applyGraphFilters() {
@@ -1794,7 +2000,7 @@ async function generateReport() {
         doc.setTextColor(6, 214, 160);
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
-        doc.text('RIFT', margin, 22);
+        doc.text('Anti-Mul', margin, 22);
         doc.setFontSize(10);
         doc.setTextColor(180, 190, 200);
         doc.text('Fraud Detection Intelligence Report', margin, 30);
@@ -1881,11 +2087,11 @@ async function generateReport() {
             doc.rect(0, 287, 210, 10, 'F');
             doc.setFontSize(7);
             doc.setTextColor(100, 110, 120);
-            doc.text('RIFT — Fraud Detection Intelligence Platform', margin, 293);
+            doc.text('Anti-Mul — Fraud Detection Intelligence Platform', margin, 293);
             doc.text(`Page ${i} of ${pages}`, 180, 293);
         }
 
-        doc.save(`RIFT_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+        doc.save(`Anti-Mul_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
         showAlert('success', 'Report Exported', 'PDF report has been downloaded successfully.');
     } catch (err) {
         console.error('PDF generation error:', err);
