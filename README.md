@@ -1,120 +1,190 @@
-# Money Muling Detection Engine
+# RIFT — Real-time Intelligence for Financial Threats
 
-## Live Demo URL
-*Place your deployed application URL here (e.g., https://money-muling-detection.vercel.app)*
+> A graph-based money muling detection engine with an interactive fraud visualization dashboard.
 
-## Project Title
-**Money Muling Detection Engine** - A Graph-Based Financial Forensics Tool
+---
 
-## Tech Stack
--   **Language**: Python 3.9+
--   **Framework**: FastAPI (High-performance web framework)
--   **Graph Processing**: NetworkX (Graph algorithms)
--   **Data Processing**: Pandas (Data manipulation)
--   **Server**: Uvicorn (ASGI server)
+## 🚀 Features
 
-## System Architecture
-The application is designed as a high-performance, synchronous processing engine that ingests transaction data and builds a directed graph representation of financial flows.
+- **3 Detection Engines** — Cycle detection, smurfing (fan-out) analysis, and shell chain identification
+- **Interactive Graph Visualization** — Cytoscape.js-powered network graph with multiple layout options
+- **Risk Scoring** — Multi-factor suspicion scoring with interaction bonuses and density adjustments
+- **Time Travel** — Temporal slider to replay transactions over time
+- **Account Deep-Dive** — Click any node for detailed account forensics
+- **Multiple Views** — Graph, Heatmap, Fraud Rings table, JSON inspector, and Architecture view
+- **Graph Pan Sliders** — Horizontal and vertical sliders for precise graph navigation
+- **Layout Switcher** — Switch between Default, Force-Directed, Circle, Concentric, and Grid layouts
+- **PDF Export** — Generate downloadable fraud analysis reports
+- **Command Palette** — Quick search for accounts and rings (Ctrl+K)
 
-1.  **Ingestion Layer**: Parses CSV uploads, validates schema (`graph_builder.py`), and normalizes data.
-2.  **Graph Construction**: Builds an in-memory directed graph (`GraphData`) with adjacency lists and node statistics.
-3.  **Detection Engine**: Runs three parallel detection algorithms (`cycle_detector.py`, `smurf_detector.py`, `shell_detector.py`).
-4.  **Scoring & Ranking**: Aggregates risk scores using a weighted model with interaction bonuses and density adjustments (`scoring_engine.py`, `confidence_engine.py`, `density_guard.py`).
-5.  **API Layer**: Exposes `POST /analyze` and `GET /download-json` endpoints (`main.py`).
+---
 
-## Algorithm Approach
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Python 3.9+, FastAPI, Uvicorn |
+| **Graph Processing** | NetworkX |
+| **Data Processing** | Pandas |
+| **Frontend** | HTML5, CSS3, Vanilla JavaScript |
+| **Visualization** | Cytoscape.js |
+| **Deployment** | Any ASGI-compatible server |
+
+---
+
+## 📐 System Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Frontend (Static)                     │
+│  index.html │ app.js │ styles.css │ Cytoscape.js        │
+└──────────────────────┬──────────────────────────────────┘
+                       │ HTTP API
+┌──────────────────────▼──────────────────────────────────┐
+│                FastAPI Backend (main.py)                  │
+│                                                          │
+│  ┌──────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  Graph    │  │  Detection   │  │  Scoring &       │   │
+│  │  Builder  │  │  Engines     │  │  Confidence      │   │
+│  │          │  │              │  │                  │   │
+│  │ CSV Parse │  │ • Cycles     │  │ • Base Weights   │   │
+│  │ Validate  │  │ • Smurfing   │  │ • Interaction    │   │
+│  │ Build DAG │  │ • Shell Chain│  │ • Density Guard  │   │
+│  └──────────┘  └──────────────┘  └──────────────────┘   │
+│                                                          │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │  Layout Engine (layout_engine.py)                 │   │
+│  │  Force-directed graph positioning for frontend    │   │
+│  └──────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔬 Algorithm Approach
 
 ### 1. Circular Fund Routing (Cycle Detection)
--   **Algorithm**: Depth-Limited Depth-First Search (DFS) with canonical deduplication.
--   **Constraints**:
-    -   Cycle length between 3 and 5 hops.
-    -   Total time span ≤ 72 hours.
-    -   Amount ratio (max/min) ≤ 1.25.
--   **Complexity**: O(V * d^k) where d is average degree and k is max depth (5). Pruned by constraints.
+- **Algorithm**: Depth-Limited DFS with canonical deduplication
+- **Constraints**: Cycle length 3–5 hops, ≤72-hour time span, amount ratio ≤1.25
+- **Complexity**: O(V × d^k), pruned by time/amount constraints
 
 ### 2. Smurfing Detection (Fan-in / Fan-out)
--   **Algorithm**: Sliding Window Analysis.
--   **Logic**:
-    -   Identify "hub" accounts with ≥ 10 distinct counterparties.
-    -   Sliding 72-hour window maximizing unique counterparties.
-    -   **Variance Guard**: Reduces score if transaction amounts vary significantly (high standard deviation).
-    -   **Diversity Check**: Dampens score if the hub interacts with too many unique entities relative to total transactions.
+- **Algorithm**: Sliding Window Analysis
+- **Logic**: Identifies hub accounts with ≥10 distinct counterparties within 72-hour windows
+- **Guards**: Variance guard (reduces score for high amount variance), diversity dampening
 
 ### 3. Layered Shell Networks
--   **Algorithm**: Constrained Path Search (DFS).
--   **Logic**:
-    -   Finds directed acyclic paths of length ≥ 3 (up to 8).
-    -   **Intermediate Node Constraint**: Nodes between source and sink must have a total degree between 2 and 3.
-    -   **No Branching**: Intermediate nodes must pass funds directly to the next node in the chain.
-    -   **Guards**: 72-hour time constraint, amount ratio ≤ 3.0, minimum amount ≥ 100.
--   **Scoring**: Uses "tightness score" (inverse of average intermediate degree).
+- **Algorithm**: Constrained Path Search (DFS)
+- **Logic**: Directed acyclic paths of length 3–8 through intermediate "shell" accounts (degree 2–3)
+- **Guards**: 72-hour time constraint, amount ratio ≤3.0, minimum amount ≥100
 
-## Suspicion Score Methodology
-Scores are calculated on a scale of 0-100 based on detected patterns:
+### Suspicion Scoring (0–100)
+| Factor | Weight |
+|--------|--------|
+| Cycle participation | 40 pts |
+| Smurfing pattern | 30 pts |
+| Shell chain membership | 25 pts |
+| High velocity (>5 tx/24h) | 10 pts |
+| Multi-pattern interaction bonus | +10 pts |
+| Structural confidence | 0.8x–1.2x multiplier |
+| Density adjustment | Reduces false positives |
 
-1.  **Base Weights**:
-    -   Cycle: 40 points
-    -   Smurfing: 30 points
-    -   Shell Chains: 25 points
-    -   High Velocity (>5 tx/24h): 10 points
-2.  **Interaction Bonuses**: Added when an account exhibits multiple distinct fraud patterns (e.g., +10 for Cycle + Smurfing).
-3.  **Structural Confidence**: Adjusts score based on the strength of the ring structure (0.8x to 1.2x multiplier).
-4.  **Density Adjustment**: Lowers score for nodes in extremely dense subgraphs (>30% suspicious neighbors) to reduce false positives.
-5.  **Percentile Normalization**: Final scores are normalized against the population distribution to ensure meaningful relative ranking.
+---
 
-## Installation & Setup
+## ⚡ Installation & Setup
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/veera-raghav/RIFT26QC.git
-    cd RIFT26QC
-    ```
+### Prerequisites
+- Python 3.9+
+- pip
 
-2.  **Install dependencies**:
-    ```bash
-    pip install -r backend/requirements.txt
-    ```
+### 1. Clone the repository
+```bash
+git clone https://github.com/veera-raghav/RIFT26QC.git
+cd RIFT26QC
+```
 
-3.  **Run the server**:
-    ```bash
-    python -m backend.main
-    # Alternatively: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-    ```
-    The API will be available at `http://localhost:8000`.
+### 2. Install dependencies
+```bash
+pip install -r backend/requirements.txt
+```
 
-## Usage Instructions
+### 3. Run the server
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-### Endpoint: `POST /analyze`
-**Request**: `multipart/form-data` with a file field named `file`.
+### 4. Open in browser
+Navigate to **http://localhost:8000** — the frontend is served automatically.
 
-**Input CSV Format**:
+---
+
+## 📖 Usage
+
+### Web Interface
+1. Open the application in your browser
+2. Drag & drop a transaction CSV file onto the upload area (or click to browse)
+3. The system validates the schema and displays a preview
+4. Click **Analyze Transactions** to run the detection pipeline
+5. Explore results via the interactive dashboard:
+   - **Graph** — Interactive network visualization with pan sliders and layout options
+   - **Heatmap** — Risk score distribution across accounts
+   - **Fraud Rings** — Sortable table of detected fraud ring clusters
+   - **JSON Output** — Raw results with copy/download
+   - **Architecture** — System architecture overview
+
+### Input CSV Format
 ```csv
 transaction_id,sender_id,receiver_id,amount,timestamp
 TX_001,ACC_A,ACC_B,1000.00,2025-01-15 08:00:00
-...
+TX_002,ACC_B,ACC_C,950.00,2025-01-15 10:30:00
 ```
 
-**Response (JSON)**:
-```json
-{
-  "suspicious_accounts": [ ... ],
-  "fraud_rings": [ ... ],
-  "summary": { ... },
-  "graph_data": { "nodes": [...], "edges": [...] }
-}
+- **Transaction limit**: Up to **13,000 transactions** per analysis
+- Required columns: `transaction_id`, `sender_id`, `receiver_id`, `amount`, `timestamp`
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/analyze` | Upload CSV, returns full analysis + graph layout |
+| `GET` | `/download-json` | Download latest analysis as JSON |
+| `GET` | `/account/{id}` | Deep-dive data for a specific account |
+| `GET` | `/health` | Health check |
+
+---
+
+## 🗂 Project Structure
+
 ```
-> **Note**: The graph layout is returned in `graph_data` (renamed from `graph`).
+RIFT26QC/
+├── backend/
+│   ├── main.py              # FastAPI app, routes, static serving
+│   ├── graph_builder.py     # CSV parsing, validation, graph construction
+│   ├── cycle_detector.py    # Circular fund routing detection
+│   ├── smurf_detector.py    # Fan-in/out smurfing detection
+│   ├── shell_detector.py    # Layered shell chain detection
+│   ├── scoring_engine.py    # Multi-factor suspicion scoring
+│   ├── confidence_engine.py # Structural confidence calculation
+│   ├── density_guard.py     # False-positive density adjustment
+│   ├── layout_engine.py     # Force-directed graph layout
+│   └── requirements.txt     # Python dependencies
+├── frontend/
+│   ├── index.html           # Dashboard UI
+│   ├── app.js               # Frontend logic & Cytoscape.js integration
+│   └── styles.css           # Dark theme styling
+└── README.md
+```
 
-### Endpoint: `GET /download-json`
-**Description**: Start a direct download of the strict JSON result (without `graph_data`).
-**Response**: `analysis_result.json` file download.
+---
 
-## Known Limitations
--   **In-Memory Processing**: The current implementation loads the entire graph into memory. For datasets >100k transactions, a database-backed approach would be required.
--   **Synchronous Processing**: Large files may timeout on standard HTTP connections; async task queues are recommended for production scaling.
--   **Shell Chain Sensitivity**: Shell detection on dense graphs can be aggressive; tuned with strict time/amount constraints to minimize false positives.
+## ⚠ Known Limitations
 
-## Team Members
--   [Name 1]
--   [Name 2]
--   [Name 3]
+- **In-Memory Processing** — Entire graph loaded into memory; for >100K transactions, a database-backed approach is recommended
+- **Synchronous Processing** — Large files may timeout on standard HTTP connections; async task queues recommended for production
+- **Shell Chain Sensitivity** — Dense graphs can produce aggressive detection; mitigated via strict time/amount constraints
+
+---
+
+## 📄 License
+
+This project is for educational and research purposes.

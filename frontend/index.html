@@ -551,233 +551,250 @@
               <input type="number" id="amountFilter" class="toolbar-input" placeholder="0" min="0" />
             </div>
             <div class="toolbar-group">
-              <button class="toolbar-btn" id="fitGraphBtn" title="Fit to view">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              <label class="toolbar-label">Layout</label>
+              <select id="layoutSelect" class="toolbar-select">
+                <option value="preset">Default</option>
+                <option value="cose">Force-Directed</option>
+                <option value="circle">Circle</option>
+                <option value="concentric">Concentric</option>
+                <option value="grid">Grid</option>
+              </select>
+            </div>
+            <button class="toolbar-btn" id="fitGraphBtn" title="Fit to view">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              </svg>
+            </button>
+            <button class="toolbar-btn" id="resetGraphBtn" title="Reset view">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Time Travel Slider -->
+        <div class="time-travel" id="timeTravelPanel">
+          <div class="time-header">
+            <h4>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              Time Travel
+            </h4>
+            <div class="time-controls">
+              <button class="toolbar-btn" id="playBtn" title="Play">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21" />
                 </svg>
               </button>
-              <button class="toolbar-btn" id="resetGraphBtn" title="Reset view">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <button class="toolbar-btn" id="resetTimeBtn" title="Reset">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="1 4 1 10 7 10" />
                   <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                 </svg>
               </button>
             </div>
           </div>
-
-          <!-- Time Travel Slider -->
-          <div class="time-travel" id="timeTravelPanel">
-            <div class="time-header">
-              <h4>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                Time Travel
-              </h4>
-              <div class="time-controls">
-                <button class="toolbar-btn" id="playBtn" title="Play">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21" />
-                  </svg>
-                </button>
-                <button class="toolbar-btn" id="resetTimeBtn" title="Reset">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="1 4 1 10 7 10" />
-                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <input type="range" id="timeSlider" class="time-slider" min="0" max="100" value="100" />
-            <div class="time-labels">
-              <span id="timeStart">—</span>
-              <span id="timeCurrent">All transactions</span>
-              <span id="timeEnd">—</span>
-            </div>
-          </div>
-
-          <!-- Graph Canvas -->
-          <div id="cyGraph" class="cy-graph"></div>
-
-          <!-- Legend -->
-          <div class="graph-legend">
-            <div class="legend-item"><span class="legend-dot" style="background:#06d6a0"></span> Clean</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#ffd166"></span> Low Risk</div>
-            <div class="legend-item"><span class="legend-dot" style="background:#ef476f"></span> High Risk</div>
-            <div class="legend-item"><span class="legend-dot ring-glow"></span> Ring Member</div>
+          <input type="range" id="timeSlider" class="time-slider" min="0" max="100" value="100" />
+          <div class="time-labels">
+            <span id="timeStart">—</span>
+            <span id="timeCurrent">All transactions</span>
+            <span id="timeEnd">—</span>
           </div>
         </div>
 
-        <!-- Account Deep-Dive Side Panel -->
-        <div id="accountPanel" class="account-panel">
-          <div class="account-panel-header">
-            <h3 id="accountTitle">Account Details</h3>
-            <button class="close-btn" id="closeAccountPanel">✕</button>
+        <!-- Graph Viewport with Pan Sliders -->
+        <div class="graph-viewport">
+          <div class="graph-viewport-row">
+            <div id="cyGraph" class="cy-graph"></div>
+            <input type="range" id="graphPanV" class="graph-slider graph-slider-v" min="0" max="100" value="50"
+              orient="vertical" title="Pan vertically" />
           </div>
-          <div id="accountContent" class="account-content">
-            <p class="hint-text">Click a node in the graph to view account details.</p>
-          </div>
+          <input type="range" id="graphPanH" class="graph-slider graph-slider-h" min="0" max="100" value="50"
+            title="Pan horizontally" />
+        </div>
+
+        <!-- Legend -->
+        <div class="graph-legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#06d6a0"></span> Clean</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ffd166"></span> Low Risk</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ef476f"></span> High Risk</div>
+          <div class="legend-item"><span class="legend-dot ring-glow"></span> Ring Member</div>
         </div>
       </div>
 
-      <!-- ═══ RISK HEATMAP ═══ -->
-      <div class="tab-panel" id="heatmapPanel">
-        <div class="heatmap-header">
-          <h3>Risk Heatmap</h3>
-          <div class="heatmap-controls">
-            <label class="toolbar-label">Sort by</label>
-            <select id="heatmapSort" class="toolbar-select">
-              <option value="score">Risk Score</option>
-              <option value="connections">Connections</option>
-              <option value="volume">Transaction Volume</option>
-            </select>
-          </div>
+      <!-- Account Deep-Dive Side Panel -->
+      <div id="accountPanel" class="account-panel">
+        <div class="account-panel-header">
+          <h3 id="accountTitle">Account Details</h3>
+          <button class="close-btn" id="closeAccountPanel">✕</button>
         </div>
-        <div class="heatmap-legend">
-          <span class="heatmap-legend-label">Low Risk</span>
-          <div class="heatmap-gradient"></div>
-          <span class="heatmap-legend-label">High Risk</span>
+        <div id="accountContent" class="account-content">
+          <p class="hint-text">Click a node in the graph to view account details.</p>
         </div>
-        <div id="heatmapGrid" class="heatmap-grid"></div>
-        <div id="heatmapTooltip" class="heatmap-tooltip hidden"></div>
       </div>
+  </div>
 
-      <!-- ═══ FRAUD RINGS TABLE ═══ -->
-      <div class="tab-panel" id="ringsPanel">
-        <div class="rings-header">
-          <h3>Fraud Ring Command Center</h3>
-          <div class="rings-meta" id="ringsMeta"></div>
-        </div>
-        <div id="ringsLeaderboard" class="rings-leaderboard"></div>
-        <div class="table-wrapper">
-          <table id="ringsTable" class="rings-table">
-            <thead>
-              <tr>
-                <th>Ring ID</th>
-                <th>Pattern</th>
-                <th>Members</th>
-                <th>Risk Score</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="ringsBody"></tbody>
-          </table>
-        </div>
+  <!-- ═══ RISK HEATMAP ═══ -->
+  <div class="tab-panel" id="heatmapPanel">
+    <div class="heatmap-header">
+      <h3>Risk Heatmap</h3>
+      <div class="heatmap-controls">
+        <label class="toolbar-label">Sort by</label>
+        <select id="heatmapSort" class="toolbar-select">
+          <option value="score">Risk Score</option>
+          <option value="connections">Connections</option>
+          <option value="volume">Transaction Volume</option>
+        </select>
       </div>
+    </div>
+    <div class="heatmap-legend">
+      <span class="heatmap-legend-label">Low Risk</span>
+      <div class="heatmap-gradient"></div>
+      <span class="heatmap-legend-label">High Risk</span>
+    </div>
+    <div id="heatmapGrid" class="heatmap-grid"></div>
+    <div id="heatmapTooltip" class="heatmap-tooltip hidden"></div>
+  </div>
 
-      <!-- ═══ JSON OUTPUT ═══ -->
-      <div class="tab-panel" id="jsonPanel">
-        <div class="json-header">
-          <h3>JSON Output Inspector</h3>
-          <div class="json-controls">
-            <label class="toggle-switch">
-              <input type="checkbox" id="jsonHumanToggle" />
-              <span class="toggle-slider"></span>
-              <span class="toggle-label">Human-Readable</span>
-            </label>
-            <button class="btn-secondary" id="copyJsonBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-              Copy
-            </button>
-            <button class="btn-primary" id="downloadJsonBtn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download
-            </button>
-          </div>
-        </div>
-        <pre id="jsonViewer" class="json-viewer"><code>No analysis data yet. Upload a CSV to get started.</code></pre>
-      </div>
+  <!-- ═══ FRAUD RINGS TABLE ═══ -->
+  <div class="tab-panel" id="ringsPanel">
+    <div class="rings-header">
+      <h3>Fraud Ring Command Center</h3>
+      <div class="rings-meta" id="ringsMeta"></div>
+    </div>
+    <div id="ringsLeaderboard" class="rings-leaderboard"></div>
+    <div class="table-wrapper">
+      <table id="ringsTable" class="rings-table">
+        <thead>
+          <tr>
+            <th>Ring ID</th>
+            <th>Pattern</th>
+            <th>Members</th>
+            <th>Risk Score</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ringsBody"></tbody>
+      </table>
+    </div>
+  </div>
 
-      <!-- ═══ ARCHITECTURE VIEW ═══ -->
-      <div class="tab-panel" id="architecturePanel">
-        <div class="arch-container">
-          <h3>System Architecture</h3>
-          <div class="arch-grid">
-            <div class="arch-card">
-              <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-              </div>
-              <h4>CSV Ingestion</h4>
-              <p>Strict schema validation with column checks, UTF-8 encoding enforcement, timezone normalization, and a
-                10K transaction limit.</p>
-            </div>
-            <div class="arch-card">
-              <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2">
-                  <circle cx="6" cy="6" r="3" />
-                  <circle cx="6" cy="18" r="3" />
-                  <circle cx="18" cy="6" r="3" />
-                  <circle cx="18" cy="18" r="3" />
-                  <line x1="9" y1="6" x2="15" y2="6" />
-                  <line x1="6" y1="9" x2="6" y2="15" />
-                  <line x1="18" y1="9" x2="18" y2="15" />
-                  <line x1="9" y1="18" x2="15" y2="18" />
-                </svg>
-              </div>
-              <h4>Graph Construction</h4>
-              <p>Directed graph built with adjacency + reverse-adjacency lists. Tracks per-node statistics: in/out
-                degree, amounts, timestamps.</p>
-            </div>
-            <div class="arch-card">
-              <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef476f" stroke-width="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="6" />
-                  <circle cx="12" cy="12" r="2" />
-                </svg>
-              </div>
-              <h4>Cycle Detection</h4>
-              <p>Custom bounded DFS (depth 3–5) with 72-hour time constraint and ≤1.25 amount ratio. Canonical
-                deduplication.</p>
-            </div>
-            <div class="arch-card">
-              <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffd166" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
-              <h4>Smurfing Detection</h4>
-              <p>Fan-out pattern analysis: distributing funds to ≥5 recipients with similar amounts in short time
-                windows.</p>
-            </div>
-            <div class="arch-card">
-              <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#bb86fc" stroke-width="2">
-                  <path d="M4 4h16v16H4z" />
-                  <path d="M4 4l8 8m0 0l8-8m-8 8v8" />
-                </svg>
-              </div>
-              <h4>Shell Chain Detection</h4>
-              <p>Identifies layered pass-through chains with minimal retention, typical of laundering schemes.</p>
-            </div>
-            <div class="arch-card">
-              <div class="arch-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                </svg>
-              </div>
-              <h4>Scoring Engine</h4>
-              <p>Multi-factor scoring: base pattern weights + interaction bonuses + structural confidence + density
-                adjustment.</p>
-            </div>
+  <!-- ═══ JSON OUTPUT ═══ -->
+  <div class="tab-panel" id="jsonPanel">
+    <div class="json-header">
+      <h3>JSON Output Inspector</h3>
+      <div class="json-controls">
+        <label class="toggle-switch">
+          <input type="checkbox" id="jsonHumanToggle" />
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">Human-Readable</span>
+        </label>
+        <button class="btn-secondary" id="copyJsonBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          Copy
+        </button>
+        <button class="btn-primary" id="downloadJsonBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download
+        </button>
+      </div>
+    </div>
+    <pre id="jsonViewer" class="json-viewer"><code>No analysis data yet. Upload a CSV to get started.</code></pre>
+  </div>
+
+  <!-- ═══ ARCHITECTURE VIEW ═══ -->
+  <div class="tab-panel" id="architecturePanel">
+    <div class="arch-container">
+      <h3>System Architecture</h3>
+      <div class="arch-grid">
+        <div class="arch-card">
+          <div class="arch-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
           </div>
+          <h4>CSV Ingestion</h4>
+          <p>Strict schema validation with column checks, UTF-8 encoding enforcement, timezone normalization, and a
+            10K transaction limit.</p>
+        </div>
+        <div class="arch-card">
+          <div class="arch-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2">
+              <circle cx="6" cy="6" r="3" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="6" r="3" />
+              <circle cx="18" cy="18" r="3" />
+              <line x1="9" y1="6" x2="15" y2="6" />
+              <line x1="6" y1="9" x2="6" y2="15" />
+              <line x1="18" y1="9" x2="18" y2="15" />
+              <line x1="9" y1="18" x2="15" y2="18" />
+            </svg>
+          </div>
+          <h4>Graph Construction</h4>
+          <p>Directed graph built with adjacency + reverse-adjacency lists. Tracks per-node statistics: in/out
+            degree, amounts, timestamps.</p>
+        </div>
+        <div class="arch-card">
+          <div class="arch-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef476f" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
+          </div>
+          <h4>Cycle Detection</h4>
+          <p>Custom bounded DFS (depth 3–5) with 72-hour time constraint and ≤1.25 amount ratio. Canonical
+            deduplication.</p>
+        </div>
+        <div class="arch-card">
+          <div class="arch-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffd166" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <h4>Smurfing Detection</h4>
+          <p>Fan-out pattern analysis: distributing funds to ≥5 recipients with similar amounts in short time
+            windows.</p>
+        </div>
+        <div class="arch-card">
+          <div class="arch-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#bb86fc" stroke-width="2">
+              <path d="M4 4h16v16H4z" />
+              <path d="M4 4l8 8m0 0l8-8m-8 8v8" />
+            </svg>
+          </div>
+          <h4>Shell Chain Detection</h4>
+          <p>Identifies layered pass-through chains with minimal retention, typical of laundering schemes.</p>
+        </div>
+        <div class="arch-card">
+          <div class="arch-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#06d6a0" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </div>
+          <h4>Scoring Engine</h4>
+          <p>Multi-factor scoring: base pattern weights + interaction bonuses + structural confidence + density
+            adjustment.</p>
         </div>
       </div>
-    </main>
+    </div>
+  </div>
+  </main>
   </div>
 
   <!-- ═══════════════ COMPARISON PANEL ═══════════════ -->

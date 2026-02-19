@@ -14,6 +14,7 @@ const State = {
     currentView: 'dashboard',
     comparisonAccounts: [],
     comparisonMode: false,
+    presetPositions: {},
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -191,11 +192,11 @@ function validateAndPreview(csv, fileName, fileSize) {
 
     // Row count
     const rowCount = lines.length - 1;
-    if (rowCount <= 10000) {
-        checks.push({ pass: true, msg: `✓ ${rowCount.toLocaleString()} transactions (≤ 10,000 limit)` });
+    if (rowCount <= 13000) {
+        checks.push({ pass: true, msg: `✓ ${rowCount.toLocaleString()} transactions (≤ 13,000 limit)` });
         score += 20;
     } else {
-        checks.push({ pass: false, msg: `✗ ${rowCount.toLocaleString()} transactions exceeds 10,000 limit` });
+        checks.push({ pass: false, msg: `✗ ${rowCount.toLocaleString()} transactions exceeds 13,000 limit` });
     }
 
     // Check for empty rows
@@ -699,6 +700,17 @@ function buildGraph(data) {
     });
 
     State.cy.fit(undefined, 40);
+
+    // Save original backend-computed positions for the 'Default' layout
+    State.presetPositions = {};
+    State.cy.nodes().forEach(node => {
+        const pos = node.position();
+        State.presetPositions[node.data('id')] = { x: pos.x, y: pos.y };
+    });
+
+    // Reset layout dropdown
+    const layoutSel = $('#layoutSelect');
+    if (layoutSel) layoutSel.value = 'preset';
 }
 
 function getNodeColor(score, suspicious) {
@@ -763,22 +775,121 @@ function initGraphControls() {
         applyGraphFilters();
     });
 
+    // Layout switcher
+    $('#layoutSelect').addEventListener('change', (e) => {
+        applyLayout(e.target.value);
+    });
+
+    // ── Pan Sliders ──
+    const panH = $('#graphPanH');
+    const panV = $('#graphPanV');
+    let panSliderActive = false;
+
+    function panFromSliders() {
+        if (!State.cy) return;
+        panSliderActive = true;
+        const ext = State.cy.extent();
+        const cw = State.cy.width();
+        const ch = State.cy.height();
+        const graphW = ext.w;
+        const graphH = ext.h;
+        // Map slider 0-100 to pan range
+        const hVal = parseInt(panH.value);
+        const vVal = parseInt(panV.value);
+        const panX = -((hVal / 100) * graphW - cw / 2);
+        const panY = -((vVal / 100) * graphH - ch / 2);
+        State.cy.pan({ x: panX, y: panY });
+        panSliderActive = false;
+    }
+
+    panH.addEventListener('input', panFromSliders);
+    panV.addEventListener('input', panFromSliders);
+
     // Fit
     $('#fitGraphBtn').addEventListener('click', () => {
-        if (State.cy) State.cy.fit(undefined, 40);
+        if (State.cy) {
+            State.cy.fit(undefined, 40);
+            panH.value = 50;
+            panV.value = 50;
+        }
     });
 
     // Reset
     $('#resetGraphBtn').addEventListener('click', () => {
         if (State.cy) {
             State.cy.elements().removeClass('highlighted highlighted-edge dimmed hidden-node');
-            State.cy.fit(undefined, 40);
             $('#filterSelect').value = 'all';
             $('#ringFilter').value = 'all';
             $('#patternMode').value = 'default';
             $('#amountFilter').value = '';
+            $('#layoutSelect').value = 'preset';
+            panH.value = 50;
+            panV.value = 50;
+            applyLayout('preset');
         }
     });
+}
+
+function applyLayout(layoutName) {
+    if (!State.cy) return;
+
+    if (layoutName === 'preset') {
+        // Restore original backend-computed positions
+        State.cy.nodes().forEach(node => {
+            const pos = State.presetPositions[node.data('id')];
+            if (pos) node.position(pos);
+        });
+        State.cy.fit(undefined, 40);
+        return;
+    }
+
+    const layoutConfigs = {
+        cose: {
+            name: 'cose',
+            animate: true,
+            animationDuration: 800,
+            nodeRepulsion: () => 6000,
+            idealEdgeLength: () => 100,
+            edgeElasticity: () => 100,
+            gravity: 0.25,
+            numIter: 300,
+            fit: true,
+            padding: 40,
+        },
+        circle: {
+            name: 'circle',
+            animate: true,
+            animationDuration: 600,
+            fit: true,
+            padding: 40,
+            avoidOverlap: true,
+        },
+        concentric: {
+            name: 'concentric',
+            animate: true,
+            animationDuration: 600,
+            fit: true,
+            padding: 40,
+            minNodeSpacing: 30,
+            concentric: (node) => node.data('suspicious') ? node.data('score') : 0,
+            levelWidth: () => 2,
+        },
+        grid: {
+            name: 'grid',
+            animate: true,
+            animationDuration: 600,
+            fit: true,
+            padding: 40,
+            avoidOverlap: true,
+            condense: true,
+            rows: undefined,
+        },
+    };
+
+    const config = layoutConfigs[layoutName];
+    if (config) {
+        State.cy.layout(config).run();
+    }
 }
 
 function applyGraphFilters() {

@@ -1468,11 +1468,71 @@ tbody tr:last-child td {
 
 .cy-graph {
   width: 100%;
-  height: 550px;
+  height: 700px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius)
+  border-radius: 0;
+}
+
+/* ═══ GRAPH PAN SLIDERS ═══ */
+.graph-viewport {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-viewport-row {
+  display: flex;
+}
+
+.graph-viewport-row .cy-graph {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Shared slider styles */
+.graph-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  outline: none;
+}
+
+.graph-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px rgba(0, 180, 216, .5);
+  cursor: grab;
+}
+
+.graph-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  background: #00d4ff;
+}
+
+/* Horizontal slider */
+.graph-slider-h {
+  width: 100%;
+  height: 18px;
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* Vertical slider */
+.graph-slider-v {
+  width: 18px;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  border-left: none;
+}
+
+.graph-slider-v::-webkit-slider-thumb {
+  width: 14px;
+  height: 28px;
 }
 
 .graph-legend {
