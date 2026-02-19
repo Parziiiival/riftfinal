@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+venv/
+*.egg
+verification_result.json
+test_backend.py
+verify_output.py
