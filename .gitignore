@@ -6,7 +6,10 @@ dist/
 build/
 .env
 venv/
+.venv/
 *.egg
 verification_result.json
 test_backend.py
 verify_output.py
+test_*.py
+*.log

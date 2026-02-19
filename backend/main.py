@@ -1,19 +1,22 @@
 """
 main.py — FastAPI Application Entry Point
 
-Single endpoint: POST /analyze
-  - Accepts a CSV file upload
-  - Runs the full detection pipeline synchronously
-  - Returns strict JSON response
+Endpoints:
+  POST /analyze   — Accept CSV, process synchronously, return full result
+  GET  /download-json — Return exact required JSON only (no graph data)
+
+Track: processing_time_seconds
+No async.  No background jobs.
 """
 
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.graph_builder import parse_csv
 from backend.cycle_detector import detect_cycles
@@ -37,6 +40,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── In-memory cache for the latest analysis (strict JSON only) ────
+_last_download_json: Optional[dict] = None
+
 
 @app.get("/")
 def health_check():
@@ -49,6 +55,8 @@ async def analyze(file: UploadFile = File(...)):
     Accept a CSV upload, run the full fraud detection pipeline,
     and return strict JSON output.
     """
+    global _last_download_json
+
     # ── Validate file type ────────────────────────────────────────
     if file.content_type and "csv" not in file.content_type and "text" not in file.content_type:
         raise HTTPException(
@@ -90,17 +98,42 @@ async def analyze(file: UploadFile = File(...)):
     result["summary"]["processing_time_seconds"] = elapsed
 
     # Remove internal data before sending
-    all_rings_internal = result.pop("_all_rings", [])
+    result.pop("_all_rings", [])
 
-    # ── Build final response ──────────────────────────────────────
+    # ── Cache the strict download JSON (no graph_data) ────────────
+    _last_download_json = {
+        "suspicious_accounts": result["suspicious_accounts"],
+        "fraud_rings": result["fraud_rings"],
+        "summary": result["summary"],
+    }
+
+    # ── Build final response (includes graph_data for frontend) ───
     response: dict[str, Any] = {
         "suspicious_accounts": result["suspicious_accounts"],
         "fraud_rings": result["fraud_rings"],
         "summary": result["summary"],
-        "graph": layout,
+        "graph_data": layout,
     }
 
     return response
+
+
+@app.get("/download-json")
+def download_json():
+    """
+    Return exact required JSON only — no graph_data.
+    Uses the result from the most recent POST /analyze call.
+    """
+    if _last_download_json is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No analysis has been run yet. Upload a CSV via POST /analyze first.",
+        )
+    return JSONResponse(
+        content=_last_download_json,
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=analysis_result.json"},
+    )
 
 
 # ── Direct run ────────────────────────────────────────────────────

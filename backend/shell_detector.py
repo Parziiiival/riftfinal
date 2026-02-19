@@ -5,13 +5,18 @@ Rules:
   - Directed acyclic path of length ≥3
   - Intermediate nodes have degree ∈ [2, 3]
   - No branching in path (each intermediate has exactly 1 out-edge on the path)
+  - Time constraint: chain must complete within 72 hours
+  - Amount consistency: max/min amount ratio ≤ 3.0
+  - Minimum transaction amount ≥ 100
+  - Post-processing: only keep maximal chains (prune sub-chains)
   - Depth-limited DFS
   - Structural tightness scoring
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Set
+from datetime import timedelta
+from typing import Dict, List, Set, Tuple
 
 from backend.graph_builder import GraphData, Transaction
 
@@ -19,6 +24,9 @@ MIN_PATH_LEN = 3
 MAX_PATH_LEN = 8  # reasonable upper bound for DFS
 INTERMEDIATE_DEGREE_MIN = 2
 INTERMEDIATE_DEGREE_MAX = 3
+MAX_TIME_SPAN_HOURS = 72
+MAX_AMOUNT_RATIO = 3.0
+MIN_TRANSACTION_AMOUNT = 100.0
 
 
 def detect_shell_chains(graph: GraphData) -> List[dict]:
@@ -34,7 +42,7 @@ def detect_shell_chains(graph: GraphData) -> List[dict]:
           "tightness_score": float,
         }
     """
-    results: List[dict] = []
+    raw_results: List[dict] = []
     seen_paths: Set[tuple] = set()
 
     # Start from every node
@@ -43,9 +51,12 @@ def detect_shell_chains(graph: GraphData) -> List[dict]:
             graph=graph,
             path=[start_node],
             tx_path=[],
-            results=results,
+            results=raw_results,
             seen_paths=seen_paths,
         )
+
+    # Post-process: keep only maximal chains
+    results = _keep_maximal_chains(raw_results)
 
     return results
 
@@ -61,19 +72,20 @@ def _explore_chains(
     current = path[-1]
     depth = len(path)
 
-    # Record valid chain if long enough
+    # Record valid chain if long enough and passes all constraints
     if depth >= MIN_PATH_LEN:
         chain_key = tuple(path)
         if chain_key not in seen_paths:
-            seen_paths.add(chain_key)
-            tightness = _compute_tightness(graph, path)
-            results.append({
-                "pattern_type": "shell",
-                "members": list(path),
-                "transactions": list(tx_path),
-                "path_length": len(path),
-                "tightness_score": round(tightness, 4),
-            })
+            if _validate_chain(tx_path):
+                seen_paths.add(chain_key)
+                tightness = _compute_tightness(graph, path)
+                results.append({
+                    "pattern_type": "shell",
+                    "members": list(path),
+                    "transactions": list(tx_path),
+                    "path_length": len(path),
+                    "tightness_score": round(tightness, 4),
+                })
 
     if depth >= MAX_PATH_LEN:
         return
@@ -81,13 +93,15 @@ def _explore_chains(
     # Extend
     outgoing = graph.adj_list.get(current, [])
 
-    # No branching rule: for intermediaries (not the start), outgoing degree
-    # on the path should be 1 (we pick the single edge that continues the chain)
     for tx in outgoing:
         neighbour = tx.receiver
 
         # Acyclic: no revisiting
         if neighbour in path:
+            continue
+
+        # Minimum amount filter
+        if tx.amount < MIN_TRANSACTION_AMOUNT:
             continue
 
         # Intermediate node constraint (the *current* node is intermediate if
@@ -99,15 +113,82 @@ def _explore_chains(
             if not (INTERMEDIATE_DEGREE_MIN <= stats.total_degree <= INTERMEDIATE_DEGREE_MAX):
                 continue
 
-        # Also check the candidate neighbour as potential intermediate
-        # (it will become intermediate if the chain extends beyond it)
-        neighbour_stats = graph.node_stats.get(neighbour)
+        # Early time pruning
+        candidate_txs = tx_path + [tx]
+        if _time_span_hours(candidate_txs) > MAX_TIME_SPAN_HOURS:
+            continue
 
         path.append(neighbour)
         tx_path.append(tx)
         _explore_chains(graph, path, tx_path, results, seen_paths)
         tx_path.pop()
         path.pop()
+
+
+def _validate_chain(txs: List[Transaction]) -> bool:
+    """Check time span ≤72h and amount ratio ≤3.0."""
+    if not txs:
+        return False
+    if _time_span_hours(txs) > MAX_TIME_SPAN_HOURS:
+        return False
+    amounts = [tx.amount for tx in txs]
+    min_a = min(amounts)
+    if min_a <= 0:
+        return False
+    if max(amounts) / min_a > MAX_AMOUNT_RATIO:
+        return False
+    return True
+
+
+def _time_span_hours(txs: List[Transaction]) -> float:
+    """Total time span of the transaction list in hours."""
+    if not txs:
+        return 0.0
+    timestamps = [tx.timestamp for tx in txs]
+    span = max(timestamps) - min(timestamps)
+    return span.total_seconds() / 3600.0
+
+
+def _keep_maximal_chains(chains: List[dict]) -> List[dict]:
+    """
+    Remove sub-chains: if chain A's members are a contiguous subset
+    of chain B's members, discard A.
+    """
+    if not chains:
+        return []
+
+    # Sort by path length descending so we check longest first
+    chains.sort(key=lambda c: -c["path_length"])
+
+    # Build a set of all member tuples for quick lookup
+    chain_tuples = [tuple(c["members"]) for c in chains]
+    keep = [True] * len(chains)
+
+    for i in range(len(chains)):
+        if not keep[i]:
+            continue
+        seq_i = chain_tuples[i]
+        for j in range(i + 1, len(chains)):
+            if not keep[j]:
+                continue
+            seq_j = chain_tuples[j]
+            # Check if seq_j is a contiguous subsequence of seq_i
+            if _is_contiguous_subseq(seq_i, seq_j):
+                keep[j] = False
+
+    return [c for c, k in zip(chains, keep) if k]
+
+
+def _is_contiguous_subseq(longer: tuple, shorter: tuple) -> bool:
+    """Check if shorter is a contiguous subsequence of longer."""
+    len_s = len(shorter)
+    len_l = len(longer)
+    if len_s > len_l:
+        return False
+    for start in range(len_l - len_s + 1):
+        if longer[start:start + len_s] == shorter:
+            return True
+    return False
 
 
 def _compute_tightness(graph: GraphData, path: List[str]) -> float:
