@@ -10,6 +10,7 @@
 -   **Language**: Python 3.9+
 -   **Framework**: FastAPI (High-performance web framework)
 -   **Graph Processing**: NetworkX (Graph algorithms)
+-   **Graph Database**: Neo4j (optional, for clean typed graph representation)
 -   **Data Processing**: Pandas (Data manipulation)
 -   **Server**: Uvicorn (ASGI server)
 
@@ -20,7 +21,8 @@ The application is designed as a high-performance, synchronous processing engine
 2.  **Graph Construction**: Builds an in-memory directed graph (`GraphData`) with adjacency lists and node statistics.
 3.  **Detection Engine**: Runs three parallel detection algorithms (`cycle_detector.py`, `smurf_detector.py`, `shell_detector.py`).
 4.  **Scoring & Ranking**: Aggregates risk scores using a weighted model with interaction bonuses and density adjustments (`scoring_engine.py`, `confidence_engine.py`, `density_guard.py`).
-5.  **API Layer**: Exposes `POST /analyze` and `GET /download-json` endpoints (`main.py`).
+5.  **API Layer**: Exposes `POST /analyze`, `GET /download-json`, and `GET /neo4j/graph` endpoints (`main.py`).
+6.  **Neo4j Sync** (optional): When `NEO4J_URI` is set, pushes the graph to Neo4j with typed Account nodes (Legitimate, CycleParticipant, SmurfingHub, ShellNode, MultiPattern).
 
 ## Algorithm Approach
 
@@ -81,6 +83,18 @@ Scores are calculated on a scale of 0-100 based on detected patterns:
     # Alternatively: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     ```
     The API will be available at `http://localhost:8000`.
+
+4.  **Neo4j (optional)** — For a persistent graph representation with typed accounts:
+    ```bash
+    # Start Neo4j (Docker example)
+    docker run -d -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:5
+
+    # Set environment variables before running the server
+    set NEO4J_URI=neo4j://localhost:7687
+    set NEO4J_USER=neo4j
+    set NEO4J_PASSWORD=password
+    ```
+    After `POST /analyze`, the graph is synced to Neo4j. Use `GET /neo4j/graph` to retrieve the typed graph, or query Neo4j directly with Cypher (e.g. `MATCH (a:Suspicious:CycleParticipant) RETURN a`).
 
 ## Usage Instructions
 

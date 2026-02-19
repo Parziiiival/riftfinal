@@ -4,3 +4,4 @@ pandas==2.2.2
 networkx==3.3
 pydantic==2.9.2
 python-multipart==0.0.9
+neo4j==5.26.0

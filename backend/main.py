@@ -26,6 +26,7 @@ from backend.smurf_detector import detect_smurfing
 from backend.shell_detector import detect_shell_chains
 from backend.scoring_engine import run_scoring_pipeline
 from backend.graph_layout import compute_layout
+from backend.neo4j_graph import sync_to_neo4j, fetch_graph_from_neo4j
 
 app = FastAPI(title="RIFT Fraud Detection API", version="1.0.0")
 
@@ -126,6 +127,17 @@ def analyze(file: UploadFile = File(...)):
         # Strip internal fields
         result.pop("_all_rings", None)
 
+        # Sync to Neo4j for clean graph representation (optional; never fail analysis)
+        neo4j_synced = False
+        try:
+            neo4j_synced = sync_to_neo4j(
+                graph,
+                result["suspicious_accounts"],
+                result["fraud_rings"],
+            )
+        except Exception as e:
+            print(f"DEBUG: Neo4j sync skipped: {e}")
+
         processing_time_seconds = round(time.time() - start, 4)
 
         response = {
@@ -134,6 +146,7 @@ def analyze(file: UploadFile = File(...)):
             "fraud_rings": result["fraud_rings"],
             "summary": result["summary"],
             "processing_time_seconds": processing_time_seconds,
+            "neo4j_synced": neo4j_synced,
         }
 
         # Store for /download-json
@@ -236,6 +249,19 @@ def account_detail(account_id: str):
         "outgoing_transactions": sorted(outgoing, key=lambda x: x["timestamp"]),
         "incoming_transactions": sorted(incoming, key=lambda x: x["timestamp"]),
     })
+
+
+# ── Neo4j Graph (typed representation) ────────────────────────────
+@app.get("/neo4j/graph")
+def neo4j_graph():
+    """Return the graph from Neo4j with typed Account nodes (if Neo4j is configured)."""
+    data = fetch_graph_from_neo4j()
+    if data is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j not configured (set NEO4J_URI) or no graph data available.",
+        )
+    return JSONResponse(content=data)
 
 
 # ── Download JSON ─────────────────────────────────────────────────
