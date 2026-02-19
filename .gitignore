@@ -13,3 +13,5 @@ test_backend.py
 verify_output.py
 test_*.py
 *.log
+.vercel
+.env*.local

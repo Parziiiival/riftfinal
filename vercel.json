@@ -1,55 +1,32 @@
 {
   "version": 2,
-<<<<<<< HEAD
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    { "src": "/static/(.*)", "dest": "frontend/$1" },
-    { "src": "/analyze", "dest": "api/index.py" },
-    { "src": "/download-json", "dest": "api/index.py" },
-    { "src": "/(.*)", "dest": "api/index.py" }
-=======
   "buildCommand": "echo 'No build needed'",
   "outputDirectory": "public",
-  "functions": {
-    "api/index.py": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api/app.py"
     },
     {
       "source": "/analyze",
-      "destination": "/api/index.py"
+      "destination": "/api/app.py"
     },
     {
       "source": "/download-json",
-      "destination": "/api/index.py"
+      "destination": "/api/app.py"
     },
     {
       "source": "/account/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api/app.py"
     },
     {
       "source": "/neo4j/graph",
-      "destination": "/api/index.py"
+      "destination": "/api/app.py"
     },
     {
       "source": "/health",
-      "destination": "/api/index.py"
+      "destination": "/api/app.py"
     }
->>>>>>> 070c2b69f9074f01bb3f66a5b12ff9e90d1c0d8a
+  ]
   ]
 }

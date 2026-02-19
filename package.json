@@ -1,0 +1,11 @@
+{
+  "name": "rift26qc",
+  "version": "1.0.0",
+  "description": "RIFT26QC project",
+  "scripts": {
+    "deploy": "vercel --prod"
+  },
+  "devDependencies": {
+    "vercel": "^50.20.0"
+  }
+}
