@@ -448,7 +448,7 @@ async function runAnalysis() {
     const formData = new FormData();
     formData.append('file', State.uploadedFile);
 
-    const fetchUrl = `${API_BASE_URL}/analyze`;
+    const fetchUrl = '/api/analyze';
     console.log('Fetching:', fetchUrl);
 
     try {
