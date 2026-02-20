@@ -13,27 +13,30 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/app.py"
+      "dest": "/api/app.py"
     },
     {
       "src": "/analyze",
-      "dest": "api/app.py"
+      "dest": "/api/app.py"
     },
     {
       "src": "/download-json",
-      "dest": "api/app.py"
+      "dest": "/api/app.py"
     },
     {
       "src": "/account/(.*)",
-      "dest": "api/app.py"
+      "dest": "/api/app.py"
     },
     {
       "src": "/neo4j/graph",
-      "dest": "api/app.py"
+      "dest": "/api/app.py"
     },
     {
       "src": "/health",
-      "dest": "api/app.py"
+      "dest": "/api/app.py"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
