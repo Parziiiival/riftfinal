@@ -1,0 +1,5 @@
+# API routes - proxy to backend if running on same domain
+# Otherwise, configure your backend URL as an environment variable
+
+# SPA fallback
+/*  /index.html  200

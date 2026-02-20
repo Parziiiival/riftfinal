@@ -3,6 +3,22 @@
    Main Application Logic
    ═══════════════════════════════════════════════════════════════ */
 
+// ── API Configuration ──────────────────────────────────────────────
+// Support for different deployment scenarios:
+// - Local development: http://localhost:8000
+// - Netlify: Uses relative paths (routed through functions)
+// - Remote: Set VITE_API_BASE_URL or window.__API_BASE_URL__ environment variable
+const API_BASE_URL = (() => {
+    // Check for environment variable
+    if (window.__API_BASE_URL__) return window.__API_BASE_URL__;
+    // Local development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8000';
+    }
+    // Netlify or production: use relative paths
+    return '';
+})();
+
 // ── Global State ──────────────────────────────────────────────────
 const State = {
     data: null,
@@ -432,7 +448,7 @@ async function runAnalysis() {
     const formData = new FormData();
     formData.append('file', State.uploadedFile);
 
-    const fetchUrl = '/analyze';
+    const fetchUrl = `${API_BASE_URL}/analyze`;
     console.log('Fetching:', fetchUrl);
 
     try {
@@ -1293,7 +1309,7 @@ async function openAccountPanel(accountId) {
     panel.classList.add('open');
 
     try {
-        const res = await fetch(`/account/${accountId}`);
+        const res = await fetch(`${API_BASE_URL}/account/${accountId}`);
         if (!res.ok) throw new Error('Failed to load');
         const data = await res.json();
         renderAccountDetail(data, content);
