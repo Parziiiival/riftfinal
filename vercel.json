@@ -1,32 +1,46 @@
 {
   "version": 2,
-  "buildCommand": "echo 'No build needed'",
-  "outputDirectory": "public",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/app.py"
+      "src": "api/app.py",
+      "use": "@vercel/python"
     },
     {
-      "source": "/analyze",
-      "destination": "/api/app.py"
-    },
-    {
-      "source": "/download-json",
-      "destination": "/api/app.py"
-    },
-    {
-      "source": "/account/(.*)",
-      "destination": "/api/app.py"
-    },
-    {
-      "source": "/neo4j/graph",
-      "destination": "/api/app.py"
-    },
-    {
-      "source": "/health",
-      "destination": "/api/app.py"
+      "src": "frontend/**",
+      "use": "@vercel/static"
     }
-  ]
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/app.py"
+    },
+    {
+      "src": "/analyze",
+      "dest": "api/app.py"
+    },
+    {
+      "src": "/download-json",
+      "dest": "api/app.py"
+    },
+    {
+      "src": "/account/(.*)",
+      "dest": "api/app.py"
+    },
+    {
+      "src": "/neo4j/graph",
+      "dest": "api/app.py"
+    },
+    {
+      "src": "/health",
+      "dest": "api/app.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    }
+  ],
+  "env": {
+    "PYTHON_VERSION": "3.11"
+  }
 }
