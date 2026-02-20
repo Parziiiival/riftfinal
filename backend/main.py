@@ -20,7 +20,8 @@ from typing import Any, Optional, Dict, List
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.graph_builder import parse_csv, GraphData
 from backend.cycle_detector import detect_cycles
